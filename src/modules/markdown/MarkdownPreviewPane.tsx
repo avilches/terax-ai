@@ -1,8 +1,7 @@
-import { MarkdownCode } from "@/components/ai-elements/markdown-code";
 import { cn } from "@/lib/utils";
 import { currentWorkspaceEnv } from "@/modules/workspace";
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 
 type ReadResult =
@@ -21,6 +20,14 @@ type Props = {
   path: string;
   visible: boolean;
 };
+
+function MarkdownCode({ children }: { children?: React.ReactNode }) {
+  return (
+    <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em]">
+      {children}
+    </code>
+  );
+}
 
 const components = { code: MarkdownCode };
 

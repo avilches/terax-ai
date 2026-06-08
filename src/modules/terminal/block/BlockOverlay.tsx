@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { useChatStore } from "@/modules/ai/store/chatStore";
 import {
   ArrowDown01Icon,
   ArrowUp01Icon,
@@ -9,7 +8,6 @@ import {
   ComputerTerminal02Icon,
   Copy01Icon,
   Search01Icon,
-  SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { homeDir } from "@tauri-apps/api/path";
@@ -66,15 +64,6 @@ function relPath(p: string): string {
 
 function copy(text: string) {
   void navigator.clipboard.writeText(text).catch(() => {});
-}
-
-function attachBlock(
-  block: PositionedBlock,
-  readOutput: (id: string) => string | null,
-) {
-  const out = readOutput(block.id);
-  const text = out ? `$ ${block.command}\n${out}` : `$ ${block.command}`;
-  useChatStore.getState().attachSelection(text, "terminal");
 }
 
 function signature(v: VisibleBlocks): string {
@@ -263,11 +252,6 @@ function Toolbar({
         }}
       />
       <IconButton title="Search in block" icon={Search01Icon} onClick={onSearch} />
-      <IconButton
-        title="Add to AI chat"
-        icon={SparklesIcon}
-        onClick={() => attachBlock(block, readOutput)}
-      />
     </div>
   );
 }
