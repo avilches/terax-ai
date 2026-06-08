@@ -81,13 +81,11 @@ export default function App() {
     setActiveId,
     newTab,
     newBlockTab,
-    newAgentTab,
     newPrivateTab,
     openFileTab,
     pinTab,
     newPreviewTab,
     newMarkdownTab,
-    newAgentTab,
     openGitDiffTab,
     openCommitHistoryTab,
     openCommitFileDiffTab,
@@ -265,18 +263,6 @@ export default function App() {
     [tabs, activeId, setActiveId],
   );
 
-  const captureActiveSelection = useCallback((): string | null => {
-    const t = tabs.find((x) => x.id === activeId);
-    if (!t) return null;
-    if (t.kind === "terminal") {
-      const lid = t.activeLeafId;
-      return terminalRefs.current.get(lid)?.getSelection() ?? null;
-    }
-    if (t.kind === "editor") {
-      return editorRefs.current.get(activeId)?.getSelection() ?? null;
-    }
-    return null;
-  }, [tabs, activeId]);
 
   const openNewTab = useCallback(() => {
     newTab(inheritedCwdForNewTab());
@@ -578,11 +564,6 @@ export default function App() {
     [setActiveId, focusPane],
   );
 
-  const onActivateLocalAgent = useCallback(() => {
-    openPanel();
-    focusInput(null);
-  }, [openPanel, focusInput]);
-
   const handleLeafExit = useCallback(
     (leafId: number, _code: number) => {
       const all = tabsRef.current;
@@ -733,7 +714,6 @@ export default function App() {
               onToggleSidebar={toggleSidebar}
               onOpenCommandPalette={() => openCommandPalette("commands")}
               onActivateAgent={onActivateAgent}
-              onActivateLocalAgent={onActivateLocalAgent}
               onOpenSettings={() => void openSettingsWindow()}
               searchTarget={searchTarget}
               searchRef={searchInlineRef}
