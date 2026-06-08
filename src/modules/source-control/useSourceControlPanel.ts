@@ -10,7 +10,6 @@ import {
   invalidateRepoDiffs,
   workingDiffKey,
 } from "@/modules/editor/lib/diffCache";
-import { usePreferencesStore } from "@/modules/settings/preferences";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SourceControlSummary } from "./useSourceControl";
 
@@ -159,17 +158,6 @@ function sameSelection(
   b: DiffSelection | null,
 ): boolean {
   return !!a && !!b && a.path === b.path && a.mode === b.mode;
-}
-
-function stagedFilesSummary(entries: SourceControlEntry[]): string {
-  return entries
-    .map((entry) => {
-      const status = entry.originalPath
-        ? `R ${entry.originalPath} -> ${entry.path}`
-        : `${entry.statusCode} ${entry.path}`;
-      return `- ${status}`;
-    })
-    .join("\n");
 }
 
 function optimisticStage(
@@ -367,7 +355,6 @@ export function useSourceControlPanel(
 
   const allClean = stagedEntries.length === 0 && unstagedEntries.length === 0;
   const canPush = !!status?.upstream && status.behind === 0;
-  const anyActionBusy = localActionBusy !== null || summary.busyAction !== null;
   const pushHint = useMemo(() => {
     if (!status) return null;
     if (!status.upstream) {
