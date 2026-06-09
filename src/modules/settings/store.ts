@@ -63,6 +63,7 @@ export type Preferences = {
   rightPanelOpen: boolean;
   rightPanelWidth: number;
   rightPanelActiveTab: "explorer" | "git" | "history";
+  rightPanelSide: "left" | "right";
 };
 
 const STORE_PATH = "terax-settings.json";
@@ -93,6 +94,7 @@ const KEY_EDITOR_AUTO_SAVE_DELAY = "editorAutoSaveDelay";
 const KEY_RIGHT_PANEL_OPEN = "rightPanelOpen";
 const KEY_RIGHT_PANEL_WIDTH = "rightPanelWidth";
 const KEY_RIGHT_PANEL_ACTIVE_TAB = "rightPanelActiveTab";
+const KEY_RIGHT_PANEL_SIDE = "rightPanelSide";
 
 export const TERMINAL_FONT_SIZE_DEFAULT = 14;
 export const TERMINAL_FONT_SIZE_MIN = 8;
@@ -136,6 +138,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   rightPanelOpen: true,
   rightPanelWidth: 240,
   rightPanelActiveTab: "explorer",
+  rightPanelSide: "right",
 };
 
 const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: 200 });
@@ -228,6 +231,10 @@ export async function loadPreferences(): Promise<Preferences> {
     rightPanelActiveTab:
       get<"explorer" | "git" | "history">(KEY_RIGHT_PANEL_ACTIVE_TAB) ??
       DEFAULT_PREFERENCES.rightPanelActiveTab,
+    rightPanelSide: (() => {
+      const v = get<string>(KEY_RIGHT_PANEL_SIDE);
+      return v === "left" || v === "right" ? v : DEFAULT_PREFERENCES.rightPanelSide;
+    })(),
   };
 }
 
@@ -378,6 +385,10 @@ export async function setRightPanelActiveTab(
   await writePref(KEY_RIGHT_PANEL_ACTIVE_TAB, value);
 }
 
+export async function setRightPanelSide(value: "left" | "right"): Promise<void> {
+  await writePref(KEY_RIGHT_PANEL_SIDE, value);
+}
+
 export type PrefKey = keyof Preferences;
 
 /** Subscribe to changes from any window (settings → main). */
@@ -411,6 +422,7 @@ export async function onPreferencesChange(
     [KEY_RIGHT_PANEL_OPEN]: "rightPanelOpen",
     [KEY_RIGHT_PANEL_WIDTH]: "rightPanelWidth",
     [KEY_RIGHT_PANEL_ACTIVE_TAB]: "rightPanelActiveTab",
+    [KEY_RIGHT_PANEL_SIDE]: "rightPanelSide",
   };
   // Same-process writes still fire onChange immediately; cross-window writes
   // arrive via the Tauri event emitted by writePref().

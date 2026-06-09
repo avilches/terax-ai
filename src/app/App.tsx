@@ -126,6 +126,7 @@ export default function App() {
 
   const rightPanelRef = useRef<RightPanelHandle>(null);
   const rightPanelOpen = usePreferencesStore((s) => s.rightPanelOpen);
+  const rightPanelSide = usePreferencesStore((s) => s.rightPanelSide);
 
   // Drives session disposal off the pane tree, not React lifecycles —
   // split/unsplit re-mount components but the leaf is still live.
@@ -723,11 +724,46 @@ export default function App() {
               onNew={() => newTab(inheritedCwdForNewTab())}
             />
 
-            {/* CENTER + RIGHT: resizable */}
+            {/* CENTER + TOOL PANEL: resizable, side configurable */}
             <ResizablePanelGroup
               orientation="horizontal"
               className="min-h-0 flex-1"
             >
+              {/* Tool panel on LEFT when rightPanelSide === "left" */}
+              {rightPanelOpen && rightPanelSide === "left" && (
+                <>
+                  <ResizablePanel
+                    id="tool-panel"
+                    defaultSize="20%"
+                    minSize="12%"
+                    maxSize="35%"
+                    collapsible
+                    collapsedSize={0}
+                    onResize={(size) => {
+                      if (size.inPixels > 0) void setRightPanelWidth(size.inPixels);
+                    }}
+                  >
+                    <RightPanel
+                      ref={rightPanelRef}
+                      rootPath={explorerRoot}
+                      activeFilePath={explorerActiveFilePath ?? null}
+                      onOpenFile={handleOpenFile}
+                      onPathRenamed={handlePathRenamed}
+                      onPathDeleted={handlePathDeleted}
+                      onRevealInTerminal={cdInNewTab}
+                      onOpenMarkdownPreview={openMarkdownPreview}
+                      sourceControl={sourceControl}
+                      onOpenDiff={openGitDiffTab}
+                      onOpenGitGraph={openGitGraphFromContext}
+                      repoRoot={rightPanelRepoRoot}
+                      onOpenCommitFile={openCommitFileDiffTab}
+                      onSearchHandle={setGitHistoryHandle}
+                    />
+                  </ResizablePanel>
+                  <ResizableHandle withHandle />
+                </>
+              )}
+
               <ResizablePanel id="center" minSize="30%">
                 <div className="zoom-content flex h-full min-h-0 flex-col">
                   <div className="relative min-h-0 flex-1">
@@ -757,11 +793,12 @@ export default function App() {
                 </div>
               </ResizablePanel>
 
-              {rightPanelOpen && (
+              {/* Tool panel on RIGHT when rightPanelSide === "right" (default) */}
+              {rightPanelOpen && rightPanelSide === "right" && (
                 <>
                   <ResizableHandle withHandle />
                   <ResizablePanel
-                    id="right-panel"
+                    id="tool-panel"
                     defaultSize="20%"
                     minSize="12%"
                     maxSize="35%"
