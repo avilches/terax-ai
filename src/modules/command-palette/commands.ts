@@ -229,12 +229,12 @@ export function createCommandItems(
       run: ctx.focusExplorerSearch,
     },
     {
-      id: "sidebar.toggle",
-      title: "Toggle file explorer",
+      id: "rightPanel.toggle",
+      title: "Toggle right panel",
       group: "View",
-      keywords: ["sidebar", "files", "explorer"],
+      keywords: ["sidebar", "panel", "right", "toggle"],
       icon: SidebarLeftIcon,
-      shortcutId: "sidebar.toggle",
+      shortcutId: "rightPanel.toggle",
       run: ctx.toggleSidebar,
     },
   ];

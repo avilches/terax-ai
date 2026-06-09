@@ -24,15 +24,15 @@ export type ShortcutId =
   | "terminal.toggleInput"
   | "search.focus"
   | "explorer.search"
-  | "explorer.focus"
+  | "rightPanel.toggle"
+  | "window.new"
+  | "workspace.prev"
+  | "workspace.next"
   | "view.zoomIn"
   | "view.zoomOut"
   | "view.zoomReset"
   | "view.zenMode"
-  | "ai.toggle"
-  | "ai.askSelection"
   | "settings.open"
-  | "sidebar.toggle"
   | "editor.undo"
   | "editor.redo";
 
@@ -42,7 +42,6 @@ export type ShortcutGroup =
   | "Panes"
   | "Terminal"
   | "Search"
-  | "AI"
   | "View"
   | "Editor";
 
@@ -188,34 +187,31 @@ export const SHORTCUTS: Shortcut[] = [
     defaultBindings: [{ [MOD_PROP]: true, key: "f" }],
   },
   {
-    id: "ai.toggle",
-    label: "Toggle AI agent",
-    group: "AI",
-    defaultBindings: [{ [MOD_PROP]: true, key: "i" }],
-  },
-  {
-    id: "ai.askSelection",
-    label: "Ask AI about selection",
-    group: "AI",
-    defaultBindings: [{ [MOD_PROP]: true, key: "j" }],
-  },
-  {
-    id: "sidebar.toggle",
-    label: "Toggle file explorer",
+    id: "rightPanel.toggle",
+    label: "Toggle right panel",
     group: "View",
-    // Plain Mod+B toggles the sidebar everywhere EXCEPT a focused terminal,
-    // where it's handed to the shell / Claude Code (its "run in background"
-    // key). Mod+Shift+B always toggles, including from inside a terminal.
     defaultBindings: [
       { [MOD_PROP]: true, key: "b" },
       { [MOD_PROP]: true, shift: true, key: "b" },
     ],
   },
   {
-    id: "explorer.focus",
-    label: "Toggle file explorer focus",
-    group: "View",
-    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "e" }],
+    id: "window.new",
+    label: "New window",
+    group: "General",
+    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "n" }],
+  },
+  {
+    id: "workspace.prev",
+    label: "Previous workspace",
+    group: "General",
+    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "[" }],
+  },
+  {
+    id: "workspace.next",
+    label: "Next workspace",
+    group: "General",
+    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "]" }],
   },
   {
     id: "view.zoomIn",
@@ -275,7 +271,6 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   "Terminal",
   "View",
   "Search",
-  "AI",
   "Editor",
 ];
 

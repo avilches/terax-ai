@@ -479,10 +479,10 @@ export default function App() {
       if (id === "terminal.toggleInput") {
         return !(activeTab?.kind === "terminal" && activeTab.blocks === true);
       }
-      if (id === "sidebar.toggle") {
+      if (id === "rightPanel.toggle") {
         // Ctrl+B is also Claude Code's "run in background" key. While a terminal
         // is focused, let Ctrl+B reach the shell/Claude instead of toggling the
-        // sidebar. Ctrl+Shift+B (second binding) still toggles it from anywhere.
+        // panel. Ctrl+Shift+B (second binding) still toggles it from anywhere.
         const target =
           (e.target as HTMLElement | null) ?? document.activeElement;
         const inTerminal = !!(target as HTMLElement | null)?.closest?.(
