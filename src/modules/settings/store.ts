@@ -60,6 +60,9 @@ export type Preferences = {
   shortcuts: Record<ShortcutId, KeyBinding[]>;
   editorAutoSave: boolean;
   editorAutoSaveDelay: number;
+  rightPanelOpen: boolean;
+  rightPanelWidth: number;
+  rightPanelActiveTab: "explorer" | "git" | "history";
 };
 
 const STORE_PATH = "terax-settings.json";
@@ -87,6 +90,9 @@ const KEY_AGENT_NOTIFICATIONS = "agentNotifications";
 const KEY_SHORTCUTS = "shortcuts";
 const KEY_EDITOR_AUTO_SAVE = "editorAutoSave";
 const KEY_EDITOR_AUTO_SAVE_DELAY = "editorAutoSaveDelay";
+const KEY_RIGHT_PANEL_OPEN = "rightPanelOpen";
+const KEY_RIGHT_PANEL_WIDTH = "rightPanelWidth";
+const KEY_RIGHT_PANEL_ACTIVE_TAB = "rightPanelActiveTab";
 
 export const TERMINAL_FONT_SIZE_DEFAULT = 14;
 export const TERMINAL_FONT_SIZE_MIN = 8;
@@ -127,6 +133,9 @@ export const DEFAULT_PREFERENCES: Preferences = {
   shortcuts: {} as Record<ShortcutId, KeyBinding[]>,
   editorAutoSave: false,
   editorAutoSaveDelay: 1000,
+  rightPanelOpen: true,
+  rightPanelWidth: 240,
+  rightPanelActiveTab: "explorer",
 };
 
 const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: 200 });
@@ -210,6 +219,15 @@ export async function loadPreferences(): Promise<Preferences> {
       get<number>(KEY_EDITOR_AUTO_SAVE_DELAY) ??
         DEFAULT_PREFERENCES.editorAutoSaveDelay,
     ),
+    rightPanelOpen:
+      get<boolean>(KEY_RIGHT_PANEL_OPEN) ?? DEFAULT_PREFERENCES.rightPanelOpen,
+    rightPanelWidth: (() => {
+      const w = get<number>(KEY_RIGHT_PANEL_WIDTH) ?? DEFAULT_PREFERENCES.rightPanelWidth;
+      return Number.isFinite(w) ? Math.min(480, Math.max(160, w)) : DEFAULT_PREFERENCES.rightPanelWidth;
+    })(),
+    rightPanelActiveTab:
+      get<"explorer" | "git" | "history">(KEY_RIGHT_PANEL_ACTIVE_TAB) ??
+      DEFAULT_PREFERENCES.rightPanelActiveTab,
   };
 }
 
@@ -345,6 +363,21 @@ export async function resetShortcuts(): Promise<void> {
   await writePref(KEY_SHORTCUTS, DEFAULT_PREFERENCES.shortcuts);
 }
 
+export async function setRightPanelOpen(value: boolean): Promise<void> {
+  await writePref(KEY_RIGHT_PANEL_OPEN, value);
+}
+
+export async function setRightPanelWidth(value: number): Promise<void> {
+  const clamped = Number.isFinite(value) ? Math.min(480, Math.max(160, Math.round(value))) : 240;
+  await writePref(KEY_RIGHT_PANEL_WIDTH, clamped);
+}
+
+export async function setRightPanelActiveTab(
+  value: "explorer" | "git" | "history",
+): Promise<void> {
+  await writePref(KEY_RIGHT_PANEL_ACTIVE_TAB, value);
+}
+
 export type PrefKey = keyof Preferences;
 
 /** Subscribe to changes from any window (settings → main). */
@@ -375,6 +408,9 @@ export async function onPreferencesChange(
     [KEY_SHORTCUTS]: "shortcuts",
     [KEY_EDITOR_AUTO_SAVE]: "editorAutoSave",
     [KEY_EDITOR_AUTO_SAVE_DELAY]: "editorAutoSaveDelay",
+    [KEY_RIGHT_PANEL_OPEN]: "rightPanelOpen",
+    [KEY_RIGHT_PANEL_WIDTH]: "rightPanelWidth",
+    [KEY_RIGHT_PANEL_ACTIVE_TAB]: "rightPanelActiveTab",
   };
   // Same-process writes still fire onChange immediately; cross-window writes
   // arrive via the Tauri event emitted by writePref().
