@@ -88,7 +88,11 @@ export function updatePane(
 
 export function updateDivider(tree: SplitNode, splitId: string, position: number): SplitNode {
   if (tree.kind === "pane") return tree;
-  if (tree.id === splitId) return { ...tree, dividerPosition: Math.min(0.9, Math.max(0.1, position)) };
+  if (tree.id === splitId) {
+    const clamped = Math.min(0.9, Math.max(0.1, position));
+    if (clamped === tree.dividerPosition) return tree;  // no change
+    return { ...tree, dividerPosition: clamped };
+  }
   const first = updateDivider(tree.first, splitId, position);
   const second = updateDivider(tree.second, splitId, position);
   if (first === tree.first && second === tree.second) return tree;

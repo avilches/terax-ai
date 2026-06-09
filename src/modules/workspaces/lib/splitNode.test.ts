@@ -7,6 +7,7 @@ import {
   removePaneFromTree,
   siblingPane,
   splitPaneInTree,
+  updateDivider,
   updatePane,
 } from "./splitNode";
 import type { PaneNode, SplitNode } from "./types";
@@ -60,6 +61,14 @@ describe("removePaneFromTree", () => {
     expect(result).toEqual(p2);
   });
 
+  test("collapses split when second child removed", () => {
+    const p1 = makePane("p1");
+    const p2 = makePane("p2");
+    const tree: SplitNode = { kind: "split", id: "s0", orientation: "horizontal", first: p1, second: p2, dividerPosition: 0.5 };
+    const result = removePaneFromTree(tree, "p2");
+    expect(result).toEqual(p1);
+  });
+
   test("returns same tree if pane not found", () => {
     const tree = makePane("p1");
     expect(removePaneFromTree(tree, "unknown")).toBe(tree);
@@ -70,6 +79,13 @@ describe("findPane", () => {
   test("finds pane in flat tree", () => {
     const p = makePane("p1");
     expect(findPane(p, "p1")).toBe(p);
+  });
+
+  test("finds pane nested inside a split", () => {
+    const p1 = makePane("p1");
+    const p2 = makePane("p2");
+    const tree: SplitNode = { kind: "split", id: "s0", orientation: "horizontal", first: p1, second: p2, dividerPosition: 0.5 };
+    expect(findPane(tree, "p2")).toBe(p2);
   });
 
   test("returns null for unknown id", () => {
@@ -84,6 +100,15 @@ describe("findPanelPane", () => {
     const result = findPanelPane(pane, "panel1");
     expect(result?.panel).toBe(panel);
     expect(result?.pane).toBe(pane);
+  });
+
+  test("finds panel nested inside a split tree", () => {
+    const panel = { id: "panel1", kind: "terminal" as const };
+    const pane: PaneNode = { kind: "pane", id: "p2", panels: [panel], activePanelId: "panel1" };
+    const tree: SplitNode = { kind: "split", id: "s0", orientation: "horizontal", first: makePane("p1"), second: pane, dividerPosition: 0.5 };
+    const result = findPanelPane(tree, "panel1");
+    expect(result?.pane).toBe(pane);
+    expect(result?.panel).toBe(panel);
   });
 
   test("returns null for unknown panel id", () => {
@@ -142,5 +167,41 @@ describe("firstPaneId", () => {
     const p2 = makePane("p2");
     const tree: SplitNode = { kind: "split", id: "s0", orientation: "horizontal", first: p1, second: p2, dividerPosition: 0.5 };
     expect(firstPaneId(tree)).toBe("p1");
+  });
+});
+
+describe("updateDivider", () => {
+  const p1 = makePane("p1");
+  const p2 = makePane("p2");
+  const tree: SplitNode = { kind: "split", id: "s0", orientation: "horizontal", first: p1, second: p2, dividerPosition: 0.5 };
+
+  test("updates divider position", () => {
+    const result = updateDivider(tree, "s0", 0.3);
+    expect(result.kind).toBe("split");
+    if (result.kind === "split") expect(result.dividerPosition).toBe(0.3);
+  });
+
+  test("clamps position to 0.1 minimum", () => {
+    const result = updateDivider(tree, "s0", 0);
+    if (result.kind === "split") expect(result.dividerPosition).toBe(0.1);
+  });
+
+  test("clamps position to 0.9 maximum", () => {
+    const result = updateDivider(tree, "s0", 1);
+    if (result.kind === "split") expect(result.dividerPosition).toBe(0.9);
+  });
+
+  test("returns same reference when split not found", () => {
+    expect(updateDivider(tree, "unknown", 0.3)).toBe(tree);
+  });
+
+  test("returns same reference when pane (not split) is root", () => {
+    const pane = makePane("p1");
+    expect(updateDivider(pane, "s0", 0.3)).toBe(pane);
+  });
+
+  test("returns same reference when position unchanged", () => {
+    const result = updateDivider(tree, "s0", 0.5);
+    expect(result).toBe(tree);
   });
 });
