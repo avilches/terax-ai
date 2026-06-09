@@ -209,7 +209,10 @@ Phase 4 delivers the full drag UX. Phase 1 must lay the foundation:
 rightPanelOpen: boolean;        // default: true
 rightPanelWidth: number;        // default: 240
 rightPanelActiveTab: "explorer" | "git" | "history"; // default: "explorer"
+rightPanelSide: "left" | "right"; // default: "right"
 ```
+
+`rightPanelSide` controls whether the tool panel appears to the left or right of the center content. When `"left"`, the `ResizablePanelGroup` renders `[ToolPanel, Handle, Center]`; when `"right"` (default), `[Center, Handle, ToolPanel]`. The `WorkspaceSidebar` (52px) always stays at the far left regardless of this setting.
 
 ---
 
