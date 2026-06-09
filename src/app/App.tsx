@@ -34,12 +34,6 @@ import {
   type ShortcutId,
 } from "@/modules/shortcuts";
 import {
-  SidebarRail,
-  SIDEBAR_MAX_WIDTH,
-  SIDEBAR_MIN_WIDTH,
-  useSidebarPanel,
-} from "@/modules/sidebar";
-import {
   SourceControlPanel,
   useSourceControlContext,
 } from "@/modules/source-control";
@@ -152,16 +146,19 @@ export default function App() {
       clearWorkspaceState,
     });
 
-  const {
-    sidebarRef,
-    sidebarWidthRef,
-    sidebarView,
-    persistSidebarView,
-    toggleSidebar,
-    cycleSidebarView,
-    persistSidebarWidth,
-    toggleExplorerFocus,
-  } = useSidebarPanel(explorerRef);
+  // TODO(Task 10): replace these stubs with WorkspaceSidebar + RightPanel
+  const SIDEBAR_MIN_WIDTH = 220;
+  const SIDEBAR_MAX_WIDTH = 480;
+  const sidebarRef = useRef<import("react-resizable-panels").PanelImperativeHandle | null>(null);
+  const sidebarWidthRef = useRef(260);
+  const [sidebarView, setSidebarView] = useState<"explorer" | "source-control">("explorer");
+  const persistSidebarView = useCallback((view: "explorer" | "source-control") => setSidebarView(view), []);
+  const toggleSidebar = useCallback(() => {}, []);
+  const cycleSidebarView = useCallback((_view: "explorer" | "source-control") => {}, []);
+  const persistSidebarWidth = useCallback((_n: number) => {}, []);
+  const toggleExplorerFocus = useCallback(() => {}, []);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const SidebarRail = useCallback((_props: { activeView: "explorer" | "source-control"; onSelectView: (view: "explorer" | "source-control") => void; changedCount: number }) => null, []);
 
   const [newEditorOpen, setNewEditorOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
