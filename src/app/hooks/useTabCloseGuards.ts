@@ -1,99 +1,105 @@
 import { useCallback, useState } from "react";
-import { leafHasForegroundProcess, leafIds } from "@/modules/terminal";
-import type { Tab } from "@/modules/tabs";
+import { leafHasForegroundProcess } from "@/modules/terminal";
+import type { Workspace } from "@/modules/workspaces";
+import { allPanes } from "@/modules/workspaces";
+
+type PanelInfo = { id: string; title: string; kind: string; path?: string };
 
 type Params = {
-  tabs: Tab[];
-  disposeTab: (id: string) => void;
+  workspaces: Workspace[];
+  disposePanel: (workspaceId: string, panelId: string) => void;
+  findPanel: (panelId: string) => { workspace: { id: string }; panel: { kind: string; dirty?: boolean; path?: string; title?: string } } | null;
 };
 
 /**
- * Guards tab closing: dirty editors and terminals with a live foreground
+ * Guards panel closing: dirty editors and terminals with a live foreground
  * process route through a confirmation dialog instead of closing immediately.
- * Owns the three pending-close states the dialogs render from.
  */
-export function useTabCloseGuards({ tabs, disposeTab }: Params) {
-  const [pendingCloseTab, setPendingCloseTab] = useState<string | null>(null);
-  const [pendingTerminalCloseTab, setPendingTerminalCloseTab] = useState<
-    string | null
-  >(null);
-  const [pendingDeleteTabs, setPendingDeleteTabs] = useState<string[] | null>(
-    null,
-  );
+export function useTabCloseGuards({ workspaces, disposePanel, findPanel }: Params) {
+  const [pendingClosePanel, setPendingClosePanel] = useState<PanelInfo | null>(null);
+  const [pendingTerminalClosePanel, setPendingTerminalClosePanel] = useState<PanelInfo | null>(null);
+  const [pendingDeletePanels, setPendingDeletePanels] = useState<PanelInfo[] | null>(null);
 
   const handleClose = useCallback(
-    async (id: string) => {
-      const t = tabs.find((x) => x.id === id);
-      if (t?.kind === "editor" && t.dirty) {
-        setPendingCloseTab(id);
+    async (workspaceId: string, panelId: string) => {
+      const found = findPanel(panelId);
+      if (!found) return;
+      const { panel } = found;
+
+      if (panel.kind === "editor" && (panel as { dirty?: boolean }).dirty) {
+        setPendingClosePanel({ id: panelId, title: panel.title ?? panel.path ?? "file", kind: panel.kind, path: (panel as { path?: string }).path });
         return;
       }
-      if (t?.kind === "terminal") {
-        const leaves = leafIds(t.paneTree);
-        // @ts-ignore -- useTabCloseGuards updated in Task 6; leafId will be string then
-        const checks = await Promise.all(leaves.map(leafHasForegroundProcess));
-        if (checks.some(Boolean)) {
-          setPendingTerminalCloseTab(id);
+      if (panel.kind === "terminal") {
+        const busy = await leafHasForegroundProcess(panelId).catch(() => false);
+        if (busy) {
+          setPendingTerminalClosePanel({ id: panelId, title: panel.title ?? "terminal", kind: panel.kind });
           return;
         }
       }
-      disposeTab(id);
+      disposePanel(workspaceId, panelId);
     },
-    [tabs, disposeTab],
+    [findPanel, disposePanel],
   );
 
   const confirmClose = useCallback(() => {
-    if (pendingCloseTab !== null) {
-      disposeTab(pendingCloseTab);
-      setPendingCloseTab(null);
+    if (pendingClosePanel !== null) {
+      const found = findPanel(pendingClosePanel.id);
+      if (found) disposePanel(found.workspace.id, pendingClosePanel.id);
+      setPendingClosePanel(null);
     }
-  }, [pendingCloseTab, disposeTab]);
+  }, [pendingClosePanel, findPanel, disposePanel]);
 
-  const cancelClose = useCallback(() => {
-    setPendingCloseTab(null);
-  }, []);
+  const cancelClose = useCallback(() => setPendingClosePanel(null), []);
 
   const confirmTerminalClose = useCallback(() => {
-    if (pendingTerminalCloseTab !== null) disposeTab(pendingTerminalCloseTab);
-    setPendingTerminalCloseTab(null);
-  }, [pendingTerminalCloseTab, disposeTab]);
+    if (pendingTerminalClosePanel !== null) {
+      const found = findPanel(pendingTerminalClosePanel.id);
+      if (found) disposePanel(found.workspace.id, pendingTerminalClosePanel.id);
+      setPendingTerminalClosePanel(null);
+    }
+  }, [pendingTerminalClosePanel, findPanel, disposePanel]);
 
-  const cancelTerminalClose = useCallback(() => {
-    setPendingTerminalCloseTab(null);
-  }, []);
+  const cancelTerminalClose = useCallback(() => setPendingTerminalClosePanel(null), []);
 
   const confirmDeleteClose = useCallback(() => {
-    if (pendingDeleteTabs !== null) {
-      for (const id of pendingDeleteTabs) disposeTab(id);
-      setPendingDeleteTabs(null);
+    if (pendingDeletePanels !== null) {
+      for (const p of pendingDeletePanels) {
+        const found = findPanel(p.id);
+        if (found) disposePanel(found.workspace.id, p.id);
+      }
+      setPendingDeletePanels(null);
     }
-  }, [pendingDeleteTabs, disposeTab]);
+  }, [pendingDeletePanels, findPanel, disposePanel]);
 
-  const cancelDeleteClose = useCallback(() => {
-    setPendingDeleteTabs(null);
-  }, []);
+  const cancelDeleteClose = useCallback(() => setPendingDeletePanels(null), []);
 
   const handlePathDeleted = useCallback(
     (path: string) => {
-      const dirty: string[] = [];
-      for (const t of tabs) {
-        if (t.kind !== "editor") continue;
-        if (t.path !== path && !t.path.startsWith(`${path}/`)) continue;
-        if (t.dirty) {
-          dirty.push(t.id);
-        } else {
-          disposeTab(t.id);
+      const dirty: PanelInfo[] = [];
+      for (const ws of workspaces) {
+        for (const pane of allPanes(ws.paneTree)) {
+          for (const panel of pane.panels) {
+            if (panel.kind !== "editor") continue;
+            const p = (panel as { path?: string }).path ?? "";
+            if (p !== path && !p.startsWith(`${path}/`)) continue;
+            if ((panel as { dirty?: boolean }).dirty) {
+              dirty.push({ id: panel.id, title: panel.title ?? p, kind: panel.kind, path: p });
+            } else {
+              disposePanel(ws.id, panel.id);
+            }
+          }
         }
       }
-      if (dirty.length > 0) setPendingDeleteTabs(dirty);
+      if (dirty.length > 0) setPendingDeletePanels(dirty);
     },
-    [tabs, disposeTab],
+    [workspaces, disposePanel],
   );
 
   return {
-    pendingCloseTab,
-    pendingTerminalCloseTab,
-    pendingDeleteTabs,
+    pendingClosePanel,
+    pendingTerminalClosePanel,
+    pendingDeletePanels,
     handleClose,
     confirmClose,
     cancelClose,

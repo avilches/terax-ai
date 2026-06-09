@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import type { Tab } from "@/modules/tabs";
+
+type WorkspaceItem = { id: string; title: string; kind: string };
 
 export type WorkspaceSidebarProps = {
-  workspaces: Pick<Tab, "id" | "title" | "kind">[];
+  workspaces: WorkspaceItem[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;

@@ -16,7 +16,7 @@ export type AgentSignal = {
 };
 
 export type AgentSession = {
-  leafId: number;
+  panelId: string;
   tabId: string;
   agent: string;
   status: AgentStatus;
@@ -28,7 +28,7 @@ export type AgentSession = {
 export type AgentNotification = {
   id: string;
   source: AgentSource;
-  leafId: number;
+  panelId: string;
   tabId: string;
   agent: string;
   kind: NotificationKind;

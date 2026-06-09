@@ -19,7 +19,7 @@ import type { AgentNotification, AgentStatus } from "../lib/types";
 import { useAgentStore } from "../store/agentStore";
 
 type Props = {
-  onActivate: (tabId: string, leafId: number) => void;
+  onActivate: (tabId: string, panelId: string) => void;
 };
 
 function relativeTime(ts: number): string {
@@ -158,13 +158,13 @@ export function NotificationBell({ onActivate }: Props) {
     }
   };
 
-  const activate = (tabId: string, leafId: number) => {
-    onActivate(tabId, leafId);
+  const activate = (tabId: string, panelId: string) => {
+    onActivate(tabId, panelId);
     setOpen(false);
   };
 
   const activateNotification = (n: AgentNotification) => {
-    activate(n.tabId, n.leafId);
+    activate(n.tabId, n.panelId);
   };
 
   const empty = activeCount === 0 && notifications.length === 0;
@@ -216,10 +216,10 @@ export function NotificationBell({ onActivate }: Props) {
           <div className="max-h-80 overflow-y-auto border-t border-border/60 p-1">
             {active.map((s) => (
               <StatusRow
-                key={s.leafId}
+                key={s.panelId}
                 agent={s.agent}
                 status={s.status}
-                onClick={() => activate(s.tabId, s.leafId)}
+                onClick={() => activate(s.tabId, s.panelId)}
               />
             ))}
             {activeCount > 0 && notifications.length > 0 ? (

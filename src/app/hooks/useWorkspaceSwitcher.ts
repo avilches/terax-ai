@@ -1,7 +1,8 @@
 import { type RefObject, useCallback, useEffect, useState } from "react";
 import { homeDir } from "@tauri-apps/api/path";
 import { native } from "@/lib/native";
-import type { Tab } from "@/modules/tabs";
+import type { Workspace } from "@/modules/workspaces";
+import { allPanes } from "@/modules/workspaces";
 import {
   getWslHome,
   LOCAL_WORKSPACE,
@@ -9,10 +10,10 @@ import {
 } from "@/modules/workspace";
 
 type Params = {
-  tabsRef: RefObject<Tab[]>;
+  workspacesRef: RefObject<Workspace[]>;
   workspaceEnv: WorkspaceEnv;
   setWorkspaceEnv: (env: WorkspaceEnv) => void;
-  resetWorkspace: (home?: string) => void;
+  resetToHome: (home?: string) => void;
   /** Dispose live sessions and clear App-owned pane/handle ref maps. */
   clearWorkspaceState: () => void;
 };
@@ -20,13 +21,13 @@ type Params = {
 /**
  * Owns the resolved home / launch cwd and the local⇄WSL workspace switch. The
  * switch tears down live sessions (via clearWorkspaceState), re-authorizes the
- * new home, and resets the tab workspace.
+ * new home, and resets the workspace state.
  */
 export function useWorkspaceSwitcher({
-  tabsRef,
+  workspacesRef,
   workspaceEnv,
   setWorkspaceEnv,
-  resetWorkspace,
+  resetToHome,
   clearWorkspaceState,
 }: Params) {
   const [home, setHome] = useState<string | null>(null);
@@ -64,7 +65,11 @@ export function useWorkspaceSwitcher({
       ) {
         return;
       }
-      const dirty = tabsRef.current.some((t) => t.kind === "editor" && t.dirty);
+      const dirty = workspacesRef.current.some((ws) =>
+        allPanes(ws.paneTree).some((p) =>
+          p.panels.some((panel) => panel.kind === "editor" && panel.dirty),
+        ),
+      );
       if (dirty) {
         window.alert(
           "Save or close unsaved editor tabs before switching workspace.",
@@ -95,13 +100,13 @@ export function useWorkspaceSwitcher({
           // Non-fatal — git panel will surface "not authorized" if needed.
         }
       }
-      resetWorkspace(nextHome ?? undefined);
+      resetToHome(nextHome ?? undefined);
     },
     [
       workspaceEnv,
       setWorkspaceEnv,
-      resetWorkspace,
-      tabsRef,
+      resetToHome,
+      workspacesRef,
       clearWorkspaceState,
     ],
   );

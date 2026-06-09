@@ -11,12 +11,12 @@ const MAX_NOTIFICATIONS = 50;
 let notifSeq = 0;
 
 type AgentStoreState = {
-  sessions: Record<number, AgentSession>;
+  sessions: Record<string, AgentSession>;
   localAgent: LocalAgentState;
   notifications: AgentNotification[];
-  start: (leafId: number, tabId: string, agent: string) => void;
-  setStatus: (leafId: number, status: AgentStatus) => void;
-  finish: (leafId: number) => void;
+  start: (panelId: string, tabId: string, agent: string) => void;
+  setStatus: (panelId: string, status: AgentStatus) => void;
+  finish: (panelId: string) => void;
   setLocalAgent: (state: LocalAgentState) => void;
   pushNotification: (
     n: Omit<AgentNotification, "id" | "at" | "read">,
@@ -30,14 +30,14 @@ export const useAgentStore = create<AgentStoreState>((set) => ({
   localAgent: null,
   notifications: [],
 
-  start: (leafId, tabId, agent) =>
+  start: (panelId, tabId, agent) =>
     set((s) => {
       const now = Date.now();
       return {
         sessions: {
           ...s.sessions,
-          [leafId]: {
-            leafId,
+          [panelId]: {
+            panelId,
             tabId,
             agent,
             status: "working",
@@ -49,15 +49,15 @@ export const useAgentStore = create<AgentStoreState>((set) => ({
       };
     }),
 
-  setStatus: (leafId, status) =>
+  setStatus: (panelId, status) =>
     set((s) => {
-      const prev = s.sessions[leafId];
+      const prev = s.sessions[panelId];
       if (!prev || prev.status === status) return s;
       const now = Date.now();
       return {
         sessions: {
           ...s.sessions,
-          [leafId]: {
+          [panelId]: {
             ...prev,
             status,
             lastActivityAt: now,
@@ -67,11 +67,11 @@ export const useAgentStore = create<AgentStoreState>((set) => ({
       };
     }),
 
-  finish: (leafId) =>
+  finish: (panelId) =>
     set((s) => {
-      if (!s.sessions[leafId]) return s;
+      if (!s.sessions[panelId]) return s;
       const next = { ...s.sessions };
-      delete next[leafId];
+      delete next[panelId];
       return { sessions: next };
     }),
 

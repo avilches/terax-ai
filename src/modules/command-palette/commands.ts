@@ -1,6 +1,6 @@
 import type { SearchTarget } from "@/modules/header";
-import { MAX_PANES_PER_TAB, type Tab } from "@/modules/tabs";
-import { leafIds } from "@/modules/terminal";
+import { allPaneIds } from "@/modules/workspaces";
+import type { SplitNode } from "@/modules/workspaces";
 import {
   Cancel01Icon,
   DashboardSquare01Icon,
@@ -29,8 +29,11 @@ export const COMMAND_GROUPS = [
   "View",
 ] as const;
 
+const MAX_PANES_PER_WORKSPACE = 4;
+
 export type CommandPaletteActionContext = {
-  tabs: Tab[];
+  activeWorkspacePaneTree: SplitNode | null;
+  workspaceCount: number;
   activeId: string;
   searchTarget: SearchTarget;
   explorerRoot: string | null;
@@ -57,18 +60,13 @@ const noop = () => {};
 export function createCommandItems(
   ctx: CommandPaletteActionContext,
 ): PaletteItem[] {
-  const activeTab = ctx.tabs.find((tab) => tab.id === ctx.activeId);
-  const activeTerminalTab = activeTab?.kind === "terminal" ? activeTab : null;
-  const activePaneCount = activeTerminalTab
-    ? leafIds(activeTerminalTab.paneTree).length
+  const activePaneCount = ctx.activeWorkspacePaneTree
+    ? allPaneIds(ctx.activeWorkspacePaneTree).length
     : 0;
-  const onlyOneTab = ctx.tabs.length < 2;
+  const onlyOneTab = ctx.workspaceCount < 2;
   const noWorkspaceRoot = !ctx.explorerRoot && !ctx.home;
-  const splitDisabled = !activeTerminalTab
-    ? "No terminal tab"
-    : activePaneCount >= MAX_PANES_PER_TAB
-      ? "Pane limit"
-      : undefined;
+  const splitDisabled =
+    activePaneCount >= MAX_PANES_PER_WORKSPACE ? "Pane limit" : undefined;
   const closeDisabled =
     onlyOneTab && activePaneCount < 2 ? "Last tab" : undefined;
 

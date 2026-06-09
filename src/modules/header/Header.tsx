@@ -18,7 +18,7 @@ import {
 type Props = {
   onToggleSidebar: () => void;
   onOpenCommandPalette: () => void;
-  onActivateAgent: (tabId: string, leafId: number) => void;
+  onActivateAgent: (tabId: string, panelId: string) => void;
   onOpenSettings: () => void;
   searchTarget: SearchTarget;
   searchRef: RefObject<SearchInlineHandle | null>;

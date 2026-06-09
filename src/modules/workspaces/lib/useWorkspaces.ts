@@ -33,11 +33,23 @@ function newWorkspace(cwd?: string): Workspace {
   };
 }
 
-export function useWorkspaces(initial?: { cwd?: string }) {
-  const initialWorkspace = useRef(newWorkspace(initial?.cwd));
+export function useWorkspaces(initial?: { cwd?: string; initialWorkspaces?: { cwd?: string }[]; initialActiveIndex?: number }) {
+  // Pre-compute stable initial state once so both useState lazies share the same objects
+  const initRef = useRef<{ workspaces: Workspace[]; activeId: string } | null>(null);
+  if (initRef.current === null) {
+    const cwds = initial?.initialWorkspaces;
+    if (cwds && cwds.length > 0) {
+      const wsList = cwds.map((w) => newWorkspace(w.cwd));
+      const idx = Math.max(0, Math.min(initial?.initialActiveIndex ?? 0, wsList.length - 1));
+      initRef.current = { workspaces: wsList, activeId: wsList[idx]!.id };
+    } else {
+      const ws = newWorkspace(initial?.cwd);
+      initRef.current = { workspaces: [ws], activeId: ws.id };
+    }
+  }
 
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => [initialWorkspace.current]);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(initialWorkspace.current.id);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => initRef.current!.workspaces);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(() => initRef.current!.activeId);
 
   const workspacesRef = useRef(workspaces);
   useEffect(() => { workspacesRef.current = workspaces; }, [workspaces]);
@@ -226,6 +238,12 @@ export function useWorkspaces(initial?: { cwd?: string }) {
     return null;
   }, []);
 
+  const resetWorkspaces = useCallback((cwd?: string) => {
+    const ws = newWorkspace(cwd);
+    setWorkspaces([ws]);
+    setActiveWorkspaceId(ws.id);
+  }, []);
+
   return {
     workspaces,
     activeWorkspaceId,
@@ -244,6 +262,7 @@ export function useWorkspaces(initial?: { cwd?: string }) {
     setTerminalPanelCwd,
     findPanelGlobal,
     findPaneGlobal,
+    resetWorkspaces,
     allPaneIds,
   };
 }

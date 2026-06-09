@@ -1,13 +1,28 @@
-import { EditorPane, type EditorPaneHandle } from "@/modules/editor/EditorPane";
-import { GitDiffPane } from "@/modules/editor/GitDiffPane";
-import { GitHistoryPane } from "@/modules/git-history/GitHistoryPane";
+import type { EditorPaneHandle } from "@/modules/editor/EditorPane";
 import type { GitHistorySearchHandle } from "@/modules/git-history/GitHistoryPane";
-import { MarkdownPreviewPane } from "@/modules/markdown/MarkdownPreviewPane";
-import { PreviewPane, type PreviewPaneHandle } from "@/modules/preview/PreviewPane";
+import type { PreviewPaneHandle } from "@/modules/preview/PreviewPane";
 import { TerminalPane, type TerminalPaneHandle } from "@/modules/terminal/TerminalPane";
 import type { SearchAddon } from "@xterm/addon-search";
-import { useRef } from "react";
+import { type ComponentType, lazy, Suspense, useRef } from "react";
 import type { Panel } from "./lib/types";
+
+// TerminalPane is intentionally eager (terminal-first app).
+// All other heavy panel types are lazy-loaded to keep the startup bundle lean.
+const EditorPane = lazy(() =>
+  import("@/modules/editor/EditorPane").then((m) => ({ default: m.EditorPane as ComponentType<any> })),
+);
+const GitDiffPane = lazy(() =>
+  import("@/modules/editor/GitDiffPane").then((m) => ({ default: m.GitDiffPane as ComponentType<any> })),
+);
+const MarkdownPreviewPane = lazy(() =>
+  import("@/modules/markdown/MarkdownPreviewPane").then((m) => ({ default: m.MarkdownPreviewPane as ComponentType<any> })),
+);
+const PreviewPane = lazy(() =>
+  import("@/modules/preview/PreviewPane").then((m) => ({ default: m.PreviewPane as ComponentType<any> })),
+);
+const GitHistoryPane = lazy(() =>
+  import("@/modules/git-history/GitHistoryPane").then((m) => ({ default: m.GitHistoryPane as ComponentType<any> })),
+);
 
 type CommitFileDiffOpenInput = {
   repoRoot: string;
@@ -68,68 +83,82 @@ export function PanelContent({ panel, visible, focused, callbacks }: Props) {
 
     case "editor":
       return (
-        <EditorPane
-          ref={(h) => {
-            (editorRef as React.MutableRefObject<EditorPaneHandle | null>).current = h;
-            callbacks.registerEditorHandle?.(panel.id, h);
-          }}
-          path={panel.path}
-          onDirtyChange={(dirty) => callbacks.onEditorDirtyChange?.(panel.id, dirty)}
-          onClose={() => callbacks.onEditorClose?.(panel.id)}
-        />
+        <Suspense fallback={null}>
+          <EditorPane
+            ref={(h: EditorPaneHandle | null) => {
+              (editorRef as React.MutableRefObject<EditorPaneHandle | null>).current = h;
+              callbacks.registerEditorHandle?.(panel.id, h);
+            }}
+            path={panel.path}
+            onDirtyChange={(dirty: boolean) => callbacks.onEditorDirtyChange?.(panel.id, dirty)}
+            onClose={() => callbacks.onEditorClose?.(panel.id)}
+          />
+        </Suspense>
       );
 
     case "preview":
       return (
-        <PreviewPane
-          ref={(h) => {
-            (previewRef as React.MutableRefObject<PreviewPaneHandle | null>).current = h;
-            callbacks.registerPreviewHandle?.(panel.id, h);
-          }}
-          url={panel.url}
-          visible={visible}
-          onUrlChange={(url) => callbacks.onPreviewUrlChange?.(panel.id, url)}
-        />
+        <Suspense fallback={null}>
+          <PreviewPane
+            ref={(h: PreviewPaneHandle | null) => {
+              (previewRef as React.MutableRefObject<PreviewPaneHandle | null>).current = h;
+              callbacks.registerPreviewHandle?.(panel.id, h);
+            }}
+            url={panel.url}
+            visible={visible}
+            onUrlChange={(url: string) => callbacks.onPreviewUrlChange?.(panel.id, url)}
+          />
+        </Suspense>
       );
 
     case "markdown":
-      return <MarkdownPreviewPane path={panel.path} visible={visible} />;
+      return (
+        <Suspense fallback={null}>
+          <MarkdownPreviewPane path={panel.path} visible={visible} />
+        </Suspense>
+      );
 
     case "git-diff":
       return (
-        <GitDiffPane
-          source={{
-            kind: "working",
-            repoRoot: panel.repoRoot,
-            path: panel.path,
-            mode: panel.mode,
-            originalPath: panel.originalPath,
-          }}
-          active={visible}
-        />
+        <Suspense fallback={null}>
+          <GitDiffPane
+            source={{
+              kind: "working",
+              repoRoot: panel.repoRoot,
+              path: panel.path,
+              mode: panel.mode,
+              originalPath: panel.originalPath,
+            }}
+            active={visible}
+          />
+        </Suspense>
       );
 
     case "git-commit-file":
       return (
-        <GitDiffPane
-          source={{
-            kind: "commit",
-            repoRoot: panel.repoRoot,
-            sha: panel.sha,
-            path: panel.path,
-            originalPath: panel.originalPath,
-          }}
-          active={visible}
-        />
+        <Suspense fallback={null}>
+          <GitDiffPane
+            source={{
+              kind: "commit",
+              repoRoot: panel.repoRoot,
+              sha: panel.sha,
+              path: panel.path,
+              originalPath: panel.originalPath,
+            }}
+            active={visible}
+          />
+        </Suspense>
       );
 
     case "git-history":
       return (
-        <GitHistoryPane
-          repoRoot={panel.repoRoot}
-          onOpenCommitFile={(input) => callbacks.onOpenCommitFile?.(input)}
-          onSearchHandle={(handle) => callbacks.onGitHistorySearchHandle?.(panel.id, handle)}
-        />
+        <Suspense fallback={null}>
+          <GitHistoryPane
+            repoRoot={panel.repoRoot}
+            onOpenCommitFile={(input: CommitFileDiffOpenInput) => callbacks.onOpenCommitFile?.(input)}
+            onSearchHandle={(handle: GitHistorySearchHandle | null) => callbacks.onGitHistorySearchHandle?.(panel.id, handle)}
+          />
+        </Suspense>
       );
   }
 }

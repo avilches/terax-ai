@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { native } from "@/lib/native";
 import type { SidebarViewId } from "@/modules/sidebar";
-import type { Tab } from "@/modules/tabs";
 import { useSourceControl } from "./useSourceControl";
 
 function dirname(path: string | null): string | null {
@@ -12,9 +11,15 @@ function dirname(path: string | null): string | null {
   return normalized.slice(0, idx);
 }
 
+type PanelItem = {
+  kind: string;
+  path?: string;
+  repoRoot?: string;
+};
+
 type Params = {
-  activeTab: Tab | undefined;
-  tabs: Tab[];
+  activeTab: PanelItem | undefined;
+  tabs: PanelItem[];
   activeTerminalLeafCwd: string | null;
   explorerRoot: string | null;
   launchCwd: string | null;
@@ -52,7 +57,7 @@ export function useSourceControlContext({
     if (activeTab?.kind === "terminal") {
       return activeTerminalLeafCwd ?? explorerRoot ?? workspaceFallbackPath;
     }
-    if (activeTab?.kind === "editor") return dirname(activeTab.path);
+    if (activeTab?.kind === "editor") return dirname(activeTab.path ?? null);
     if (activeTab?.kind === "git-diff") return activeTab.repoRoot;
     if (activeTab?.kind === "git-commit-file") return activeTab.repoRoot;
     if (activeTab?.kind === "git-history") return activeTab.repoRoot;
@@ -76,7 +81,7 @@ export function useSourceControlContext({
   const sourceControlPath = sourceControlActive
     ? sourceControlContextPath
     : badgeContextPath;
-  const sourceControl = useSourceControl(sourceControlPath, true);
+  const sourceControl = useSourceControl(sourceControlPath ?? null, true);
 
   const toggleSourceControl = useCallback(() => {
     cycleSidebarView("source-control");

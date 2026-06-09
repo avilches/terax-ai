@@ -8,48 +8,45 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Tab } from "@/modules/tabs";
+
+type PanelInfo = { id: string; title: string; kind: string; path?: string };
 
 type Props = {
-  tabs: Tab[];
-  pendingCloseTab: string | null;
+  pendingClosePanel: PanelInfo | null;
   onCancelClose: () => void;
   onConfirmClose: () => void;
-  pendingTerminalCloseTab: string | null;
+  pendingTerminalClosePanel: PanelInfo | null;
   onCancelTerminalClose: () => void;
   onConfirmTerminalClose: () => void;
-  pendingDeleteTabs: string[] | null;
+  pendingDeletePanels: PanelInfo[] | null;
   onCancelDeleteClose: () => void;
   onConfirmDeleteClose: () => void;
 };
 
 /** Confirmation dialogs for closing dirty editors and terminals with live processes. */
 export function CloseDialogs({
-  tabs,
-  pendingCloseTab,
+  pendingClosePanel,
   onCancelClose,
   onConfirmClose,
-  pendingTerminalCloseTab,
+  pendingTerminalClosePanel,
   onCancelTerminalClose,
   onConfirmTerminalClose,
-  pendingDeleteTabs,
+  pendingDeletePanels,
   onCancelDeleteClose,
   onConfirmDeleteClose,
 }: Props) {
   return (
     <>
       <AlertDialog
-        open={pendingCloseTab !== null}
+        open={pendingClosePanel !== null}
         onOpenChange={(open) => !open && onCancelClose()}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
             <AlertDialogDescription>
-              {tabs.find((t) => t.id === pendingCloseTab)?.title
-                ? `"${
-                    tabs.find((t) => t.id === pendingCloseTab)?.title
-                  }" has unsaved changes. Close anyway?`
+              {pendingClosePanel?.title
+                ? `"${pendingClosePanel.title}" has unsaved changes. Close anyway?`
                 : "This file has unsaved changes. Close anyway?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -65,14 +62,14 @@ export function CloseDialogs({
       </AlertDialog>
 
       <AlertDialog
-        open={pendingTerminalCloseTab !== null}
+        open={pendingTerminalClosePanel !== null}
         onOpenChange={(open) => !open && onCancelTerminalClose()}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Close Terminal?</AlertDialogTitle>
             <AlertDialogDescription>
-              A process is running. Closing this tab will terminate it.
+              A process is running. Closing this panel will terminate it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -87,23 +84,21 @@ export function CloseDialogs({
       </AlertDialog>
 
       <AlertDialog
-        open={pendingDeleteTabs !== null}
+        open={pendingDeletePanels !== null}
         onOpenChange={(open) => !open && onCancelDeleteClose()}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDeleteTabs?.length === 1
+              {pendingDeletePanels?.length === 1
                 ? (() => {
-                    const title = tabs.find(
-                      (t) => t.id === pendingDeleteTabs[0],
-                    )?.title;
+                    const title = pendingDeletePanels[0]?.title;
                     return title
                       ? `"${title}" has unsaved changes. The file has been deleted. Close anyway?`
                       : "This file has unsaved changes. The file has been deleted. Close anyway?";
                   })()
-                : `${pendingDeleteTabs?.length ?? 0} files have unsaved changes. They have been deleted. Close all anyway?`}
+                : `${pendingDeletePanels?.length ?? 0} files have unsaved changes. They have been deleted. Close all anyway?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

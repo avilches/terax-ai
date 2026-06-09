@@ -1,5 +1,6 @@
-import type { Tab } from "@/modules/tabs";
-import { hasLeaf, leafIdForPty } from "@/modules/terminal";
+import type { Workspace } from "@/modules/workspaces";
+import { findPanelPane } from "@/modules/workspaces";
+import { leafIdForPty } from "@/modules/terminal";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 import { routeAgentNotification } from "../lib/route";
@@ -7,21 +8,25 @@ import type { AgentSession, AgentSignal } from "../lib/types";
 import { useWindowFocus } from "../lib/useWindowFocus";
 import { useAgentStore } from "../store/agentStore";
 
-type Activate = (tabId: string, leafId: number) => void;
+type Activate = (workspaceId: string, panelId: string) => void;
 type Ctx = {
-  tabs: Tab[];
-  activeId: string;
+  workspaces: Workspace[];
+  activeWorkspaceId: string;
   focused: boolean;
   onActivate: Activate;
 };
 
-function tabInfo(
-  tabs: Tab[],
-  leafId: number,
-): { tabId: string; title: string } | null {
-  for (const t of tabs) {
-    if (t.kind === "terminal" && hasLeaf(t.paneTree, leafId)) {
-      return { tabId: t.id, title: t.title };
+function panelInfo(
+  workspaces: Workspace[],
+  panelId: string,
+): { workspaceId: string; title: string } | null {
+  for (const ws of workspaces) {
+    const result = findPanelPane(ws.paneTree, panelId);
+    if (result) {
+      const cwd = result.panel.kind === "terminal" ? result.panel.cwd : undefined;
+      const cwdParts = cwd ? cwd.split(/[\\/]/).filter(Boolean) : [];
+      const title = cwd ? (cwdParts[cwdParts.length - 1] ?? cwd) : ws.title;
+      return { workspaceId: ws.id, title };
     }
   }
   return null;
@@ -32,7 +37,7 @@ function route(
   kind: "attention" | "finished",
   ctx: Ctx,
 ): void {
-  const info = tabInfo(ctx.tabs, session.leafId);
+  const info = panelInfo(ctx.workspaces, session.panelId);
   const heading =
     kind === "attention"
       ? `${session.agent} needs your input`
@@ -45,68 +50,59 @@ function route(
     title: heading,
     body: info?.title,
     focused: ctx.focused,
-    visible: ctx.activeId === session.tabId,
-    // Stop fires every turn, so finished only updates the bell; attention toasts.
+    visible: ctx.activeWorkspaceId === session.tabId,
     allowToast: kind === "attention",
     tabId: session.tabId,
-    leafId: session.leafId,
-    onActivate: () => ctx.onActivate(session.tabId, session.leafId),
+    panelId: session.panelId,
+    onActivate: () => ctx.onActivate(session.tabId, session.panelId),
   });
 }
 
 function handleSignal(sig: AgentSignal, ctx: Ctx): void {
-  const leafId = leafIdForPty(sig.id);
-  if (leafId === null) return;
+  const panelId = leafIdForPty(sig.id);
+  if (panelId === null) return;
   const store = useAgentStore.getState();
 
   switch (sig.kind) {
     case "started": {
-      // @ts-ignore -- agents updated in Task 6; leafId will be string then
-      const info = tabInfo(ctx.tabs, leafId);
+      const info = panelInfo(ctx.workspaces, panelId);
       if (!info) return;
-      // @ts-ignore -- agents updated in Task 6; leafId will be string then
-      store.start(leafId, info.tabId, sig.agent ?? "agent");
+      store.start(panelId, info.workspaceId, sig.agent ?? "agent");
       return;
     }
     case "working":
-      // @ts-ignore -- agents updated in Task 6; leafId will be string then
-      store.setStatus(leafId, "working");
+      store.setStatus(panelId, "working");
       return;
     case "attention": {
-      // @ts-ignore -- agents updated in Task 6; leafId will be string then
-      store.setStatus(leafId, "waiting");
-      // @ts-ignore -- agents updated in Task 6; leafId will be string then
-      const session = store.sessions[leafId];
+      store.setStatus(panelId, "waiting");
+      const session = store.sessions[panelId];
       if (session) route(session, "attention", ctx);
       return;
     }
     case "finished": {
-      // @ts-ignore -- agents updated in Task 6; leafId will be string then
-      store.setStatus(leafId, "waiting");
-      // @ts-ignore -- agents updated in Task 6; leafId will be string then
-      const session = store.sessions[leafId];
+      store.setStatus(panelId, "waiting");
+      const session = store.sessions[panelId];
       if (session) route(session, "finished", ctx);
       return;
     }
     case "exited":
-      // @ts-ignore -- agents updated in Task 6; leafId will be string then
-      store.finish(leafId);
+      store.finish(panelId);
       return;
   }
 }
 
 export function AgentNotificationsBridge({
-  tabs,
-  activeId,
+  workspaces,
+  activeWorkspaceId,
   onActivate,
 }: {
-  tabs: Tab[];
-  activeId: string;
+  workspaces: Workspace[];
+  activeWorkspaceId: string;
   onActivate: Activate;
 }) {
   const focused = useWindowFocus();
-  const ctxRef = useRef<Ctx>({ tabs, activeId, focused, onActivate });
-  ctxRef.current = { tabs, activeId, focused, onActivate };
+  const ctxRef = useRef<Ctx>({ workspaces, activeWorkspaceId, focused, onActivate });
+  ctxRef.current = { workspaces, activeWorkspaceId, focused, onActivate };
 
   useEffect(() => {
     let alive = true;
