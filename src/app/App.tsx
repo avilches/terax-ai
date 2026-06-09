@@ -6,10 +6,10 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getLaunchDir } from "@/lib/launchDir";
+import { native } from "@/lib/native";
 import { quoteShellArg } from "@/lib/shellQuote";
 import { useZoom } from "@/lib/useZoom";
 import { AgentNotificationsBridge } from "@/modules/agents";
-import { native } from "@/lib/native";
 import {
   CommandPalette,
   createCommandItems,
@@ -19,7 +19,6 @@ import {
   useEditorFileSync,
   type EditorPaneHandle,
 } from "@/modules/editor";
-import { FileExplorer, type FileExplorerHandle } from "@/modules/explorer";
 import type { GitHistorySearchHandle } from "@/modules/git-history";
 import {
   Header,
@@ -28,13 +27,17 @@ import {
 } from "@/modules/header";
 import type { PreviewPaneHandle } from "@/modules/preview";
 import { openSettingsWindow } from "@/modules/settings/openSettingsWindow";
+import { usePreferencesStore } from "@/modules/settings/preferences";
+import {
+  setRightPanelOpen,
+  setRightPanelWidth,
+} from "@/modules/settings/store";
 import {
   useGlobalShortcuts,
   type ShortcutHandlers,
   type ShortcutId,
 } from "@/modules/shortcuts";
 import {
-  SourceControlPanel,
   useSourceControlContext,
 } from "@/modules/source-control";
 import { StatusBar } from "@/modules/statusbar";
@@ -60,10 +63,12 @@ import { useWorkspaceEnvStore } from "@/modules/workspace";
 import type { SearchAddon } from "@xterm/addon-search";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CloseDialogs } from "./components/CloseDialogs";
+import { RightPanel, type RightPanelHandle } from "./components/RightPanel";
 import {
   TOGGLE_BLOCK_INPUT_EVENT,
   WorkspaceInputBar,
 } from "./components/WorkspaceInputBar";
+import { WorkspaceSidebar } from "./components/WorkspaceSidebar";
 import { WorkspaceSurface } from "./components/WorkspaceSurface";
 import { useTabCloseGuards } from "./hooks/useTabCloseGuards";
 import { useWorkspaceSwitcher } from "./hooks/useWorkspaceSwitcher";
@@ -118,7 +123,9 @@ export default function App() {
     useState<GitHistorySearchHandle | null>(null);
   const { zoomIn, zoomOut, zoomReset } = useZoom();
   useTerminalFileDrop();
-  const explorerRef = useRef<FileExplorerHandle>(null);
+
+  const rightPanelRef = useRef<RightPanelHandle>(null);
+  const rightPanelOpen = usePreferencesStore((s) => s.rightPanelOpen);
 
   // Drives session disposal off the pane tree, not React lifecycles —
   // split/unsplit re-mount components but the leaf is still live.
@@ -144,20 +151,6 @@ export default function App() {
       resetWorkspace,
       clearWorkspaceState,
     });
-
-  // TODO(Task 10): replace these stubs with WorkspaceSidebar + RightPanel
-  const SIDEBAR_MIN_WIDTH = 220;
-  const SIDEBAR_MAX_WIDTH = 480;
-  const sidebarRef = useRef<import("react-resizable-panels").PanelImperativeHandle | null>(null);
-  const sidebarWidthRef = useRef(260);
-  const [sidebarView, setSidebarView] = useState<"explorer" | "source-control">("explorer");
-  const persistSidebarView = useCallback((view: "explorer" | "source-control") => setSidebarView(view), []);
-  const toggleSidebar = useCallback(() => {}, []);
-  const cycleSidebarView = useCallback((_view: "explorer" | "source-control") => {}, []);
-  const persistSidebarWidth = useCallback((_n: number) => {}, []);
-  const toggleExplorerFocus = useCallback(() => {}, []);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const SidebarRail = useCallback((_props: { activeView: "explorer" | "source-control"; onSelectView: (view: "explorer" | "source-control") => void; changedCount: number }) => null, []);
 
   const [newEditorOpen, setNewEditorOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -354,6 +347,11 @@ export default function App() {
     activeTab?.kind === "editor" || activeTab?.kind === "markdown"
       ? activeTab.path
       : null;
+
+  const toggleRightPanel = useCallback(() => {
+    void setRightPanelOpen(!usePreferencesStore.getState().rightPanelOpen);
+  }, []);
+
   const { sourceControl, toggleSourceControl, openGitGraphFromContext } =
     useSourceControlContext({
       activeTab,
@@ -363,8 +361,8 @@ export default function App() {
       launchCwd,
       launchCwdResolved,
       home,
-      sidebarView,
-      cycleSidebarView,
+      sidebarView: "source-control",
+      cycleSidebarView: toggleRightPanel,
       openCommitHistoryTab,
     });
 
@@ -431,8 +429,20 @@ export default function App() {
         window.dispatchEvent(new CustomEvent(TOGGLE_BLOCK_INPUT_EVENT)),
       "search.focus": () => searchInlineRef.current?.focus(),
       "settings.open": () => void openSettingsWindow(),
-      "sidebar.toggle": toggleSidebar,
-      "explorer.focus": toggleExplorerFocus,
+      "rightPanel.toggle": () => {
+        void setRightPanelOpen(!usePreferencesStore.getState().rightPanelOpen);
+      },
+      "window.new": () => void native.openMainWindow(),
+      "workspace.prev": () => {
+        const idx = tabs.findIndex((t) => t.id === activeId);
+        if (idx > 0) setActiveId(tabs[idx - 1].id);
+        else if (tabs.length > 0) setActiveId(tabs[tabs.length - 1].id);
+      },
+      "workspace.next": () => {
+        const idx = tabs.findIndex((t) => t.id === activeId);
+        if (idx < tabs.length - 1) setActiveId(tabs[idx + 1].id);
+        else if (tabs.length > 0) setActiveId(tabs[0].id);
+      },
       "view.zoomIn": zoomIn,
       "view.zoomOut": zoomOut,
       "view.zoomReset": zoomReset,
@@ -442,6 +452,7 @@ export default function App() {
     }),
     [
       activeId,
+      tabs,
       openCommandPalette,
       cycleTab,
       handleCloseTabOrPane,
@@ -452,8 +463,7 @@ export default function App() {
       splitActivePaneInActiveTab,
       focusNextPaneInTab,
       toggleSourceControl,
-      toggleSidebar,
-      toggleExplorerFocus,
+      setActiveId,
       zoomIn,
       zoomOut,
       zoomReset,
@@ -634,8 +644,8 @@ export default function App() {
             splitPaneRight: () => splitActivePaneInActiveTab("row"),
             splitPaneDown: () => splitActivePaneInActiveTab("col"),
             focusSearch: () => searchInlineRef.current?.focus(),
-            focusExplorerSearch: () => explorerRef.current?.focusSearch(),
-            toggleSidebar,
+            focusExplorerSearch: () => rightPanelRef.current?.focusExplorer(),
+            toggleSidebar: toggleRightPanel,
             openSettings: () => void openSettingsWindow(),
             openKeyboardShortcuts: () => void openSettingsWindow("shortcuts"),
           })
@@ -655,7 +665,7 @@ export default function App() {
       toggleSourceControl,
       handleCloseTabOrPane,
       splitActivePaneInActiveTab,
-      toggleSidebar,
+      toggleRightPanel,
     ],
   );
 
@@ -684,13 +694,17 @@ export default function App() {
 
   const activeCwd = activeTerminalLeafCwd;
 
+  // Derive repoRoot for RightPanel's git history pane.
+  const rightPanelRepoRoot =
+    sourceControl.repo?.repoRoot ?? explorerRoot ?? home ?? "";
+
   const shell = (
     <ThemeProvider>
       <TooltipProvider>
         <div className="relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
           {!zenMode && (
             <Header
-              onToggleSidebar={toggleSidebar}
+              onToggleSidebar={toggleRightPanel}
               onOpenCommandPalette={() => openCommandPalette("commands")}
               onActivateAgent={onActivateAgent}
               onOpenSettings={() => void openSettingsWindow()}
@@ -699,56 +713,23 @@ export default function App() {
             />
           )}
 
-          <main className="zoom-content flex min-h-0 flex-1 flex-col">
+          {/* 3-column layout */}
+          <div className="flex min-h-0 flex-1">
+            {/* LEFT: 52px workspace sidebar */}
+            <WorkspaceSidebar
+              workspaces={tabs}
+              activeId={activeId}
+              onSelect={setActiveId}
+              onNew={() => newTab(inheritedCwdForNewTab())}
+            />
+
+            {/* CENTER + RIGHT: resizable */}
             <ResizablePanelGroup
               orientation="horizontal"
               className="min-h-0 flex-1"
             >
-              <ResizablePanel
-                id="sidebar"
-                panelRef={sidebarRef}
-                defaultSize={`${sidebarWidthRef.current}px`}
-                minSize={`${SIDEBAR_MIN_WIDTH}px`}
-                maxSize={`${SIDEBAR_MAX_WIDTH}px`}
-                collapsible
-                collapsedSize={0}
-                onResize={(size) => {
-                  if (size.inPixels > 0) persistSidebarWidth(size.inPixels);
-                }}
-              >
-                <div className="flex h-full min-h-0 flex-col border-r border-border/60 bg-card">
-                  <div className="min-h-0 flex-1">
-                    {sidebarView === "explorer" ? (
-                      <FileExplorer
-                        ref={explorerRef}
-                        rootPath={explorerRoot}
-                        activeFilePath={explorerActiveFilePath}
-                        onOpenFile={handleOpenFile}
-                        onPathRenamed={handlePathRenamed}
-                        onPathDeleted={handlePathDeleted}
-                        onRevealInTerminal={cdInNewTab}
-                        onOpenMarkdownPreview={openMarkdownPreview}
-                      />
-                    ) : (
-                      <SourceControlPanel
-                        open
-                        sourceControl={sourceControl}
-                        onOpenDiff={openGitDiffTab}
-                        onOpenGitGraph={openGitGraphFromContext}
-                        onOpenFile={handleOpenFile}
-                      />
-                    )}
-                  </div>
-                  <SidebarRail
-                    activeView={sidebarView}
-                    onSelectView={persistSidebarView}
-                    changedCount={sourceControl.changedCount}
-                  />
-                </div>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel id="workspace" defaultSize="78%" minSize="30%">
-                <div className="flex h-full min-h-0 flex-col">
+              <ResizablePanel id="center" minSize="30%">
+                <div className="zoom-content flex h-full min-h-0 flex-col">
                   <div className="relative min-h-0 flex-1">
                     <WorkspaceSurface
                       tabs={tabs}
@@ -775,8 +756,42 @@ export default function App() {
                   />
                 </div>
               </ResizablePanel>
+
+              {rightPanelOpen && (
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel
+                    id="right-panel"
+                    defaultSize="20%"
+                    minSize="12%"
+                    maxSize="35%"
+                    collapsible
+                    collapsedSize={0}
+                    onResize={(size) => {
+                      if (size.inPixels > 0) void setRightPanelWidth(size.inPixels);
+                    }}
+                  >
+                    <RightPanel
+                      ref={rightPanelRef}
+                      rootPath={explorerRoot}
+                      activeFilePath={explorerActiveFilePath ?? null}
+                      onOpenFile={handleOpenFile}
+                      onPathRenamed={handlePathRenamed}
+                      onPathDeleted={handlePathDeleted}
+                      onRevealInTerminal={cdInNewTab}
+                      onOpenMarkdownPreview={openMarkdownPreview}
+                      sourceControl={sourceControl}
+                      onOpenDiff={openGitDiffTab}
+                      onOpenGitGraph={openGitGraphFromContext}
+                      repoRoot={rightPanelRepoRoot}
+                      onOpenCommitFile={openCommitFileDiffTab}
+                      onSearchHandle={setGitHistoryHandle}
+                    />
+                  </ResizablePanel>
+                </>
+              )}
             </ResizablePanelGroup>
-          </main>
+          </div>
 
           {!zenMode && (
             <StatusBar
