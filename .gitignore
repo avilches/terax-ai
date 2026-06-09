@@ -25,4 +25,4 @@ stats.html
 *.sln
 *.sw?
 
-*.tsbuildinfo
+*.tsbuildinfo.superpowers/
