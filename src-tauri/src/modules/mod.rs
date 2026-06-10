@@ -5,4 +5,5 @@ pub mod history;
 pub mod proc;
 pub mod pty;
 pub mod shell;
+pub mod window_state;
 pub mod workspace;
