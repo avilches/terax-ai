@@ -15,7 +15,6 @@ import {
   terminalWordNavigationSequence,
 } from "./keymap";
 
-export const POOL_MAX_SIZE = 5;
 const FIT_DEBOUNCE_MS = 8;
 const PTY_RESIZE_DEBOUNCE_MS = 256;
 const SNAPSHOT_SCROLLBACK_CAP = 5_000;
@@ -304,34 +303,10 @@ function isAltScreen(s: Slot): boolean {
   }
 }
 
-function pickSlotFor(leafId: string): PickResult {
+function pickSlotFor(_leafId: string): PickResult {
   const free = slots.find((s) => s.currentLeafId === null);
   if (free) return { slot: free, previousLeafId: null };
-  if (slots.length < POOL_MAX_SIZE)
-    return { slot: createSlot(), previousLeafId: null };
-
-  let best: Slot | null = null;
-  let bestScore = Number.POSITIVE_INFINITY;
-  for (const s of slots) {
-    if (s.currentLeafId === leafId) return { slot: s, previousLeafId: null };
-    const focused =
-      s.currentLeafId !== null &&
-      (adapter?.isLeafFocused(s.currentLeafId) ?? false);
-    const blocks =
-      s.currentLeafId !== null &&
-      (adapter?.isLeafBlocks(s.currentLeafId) ?? false);
-    const score =
-      (isAltScreen(s) ? 100 : 0) +
-      (blocks ? 50 : 0) +
-      (focused ? 10 : 0) +
-      s.lastUsedAt / 1e12;
-    if (score < bestScore) {
-      bestScore = score;
-      best = s;
-    }
-  }
-  const chosen = best!;
-  return { slot: chosen, previousLeafId: chosen.currentLeafId };
+  return { slot: createSlot(), previousLeafId: null };
 }
 
 export type AcquireParams = {
