@@ -67,6 +67,11 @@ export function WorkspaceView({
     }
   }
 
+  function handleDragCancel() {
+    setDraggingPanel(null);
+    setDraggingWorkspaceId(null);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     setDraggingPanel(null);
     setDraggingWorkspaceId(null);
@@ -123,8 +128,9 @@ export function WorkspaceView({
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
-      <div className="relative h-full w-full">
+      <div className={cn("relative h-full w-full", draggingPanel && "[&_*]:!cursor-grabbing cursor-grabbing")}>
         {workspaces.map((ws) => (
           <div
             key={ws.id}

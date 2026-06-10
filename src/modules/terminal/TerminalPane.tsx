@@ -30,6 +30,7 @@ type Props = {
   onSearchReady?: (panelId: string, addon: SearchAddon) => void;
   onExit?: (panelId: string, code: number) => void;
   onCwd?: (panelId: string, cwd: string) => void;
+  onRunningCommand?: (panelId: string, cmd: string | null) => void;
 };
 
 export const TerminalPane = forwardRef<TerminalPaneHandle, Props>(
@@ -43,6 +44,7 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, Props>(
       onSearchReady,
       onExit,
       onCwd,
+      onRunningCommand,
     },
     ref,
   ) {
@@ -60,6 +62,7 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, Props>(
       onSearchReady: (a) => onSearchReady?.(panelId, a),
       onExit: (c) => onExit?.(panelId, c),
       onCwd: (c) => onCwd?.(panelId, c),
+      onRunningCommand: (cmd) => onRunningCommand?.(panelId, cmd),
     });
 
     useEffect(() => {

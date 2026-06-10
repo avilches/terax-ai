@@ -280,7 +280,12 @@ export function useWorkspaces(initial?: { cwd?: string; initialWorkspaces?: Work
   }, []);
 
   const setTerminalPanelCwd = useCallback((workspaceId: string, panelId: string, cwd: string) => {
-    updatePanelData(workspaceId, panelId, (p) => p.kind === "terminal" ? { ...p, cwd } : p);
+    const normalized = cwd.length > 1 ? cwd.replace(/\/$/, "") : cwd;
+    updatePanelData(workspaceId, panelId, (p) => p.kind === "terminal" ? { ...p, cwd: normalized } : p);
+  }, [updatePanelData]);
+
+  const setTerminalRunningCommand = useCallback((workspaceId: string, panelId: string, cmd: string | null) => {
+    updatePanelData(workspaceId, panelId, (p) => p.kind === "terminal" ? { ...p, runningCommand: cmd ?? undefined } : p);
   }, [updatePanelData]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -328,6 +333,7 @@ export function useWorkspaces(initial?: { cwd?: string; initialWorkspaces?: Work
     closePanel,
     updatePanelData,
     setTerminalPanelCwd,
+    setTerminalRunningCommand,
     findPanelGlobal,
     findPaneGlobal,
     resetWorkspaces,

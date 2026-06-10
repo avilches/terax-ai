@@ -42,12 +42,14 @@ export type PromptTracker = {
 export function registerPromptTracker(
   term: Terminal,
   state?: ShellIntegrationState,
+  onRunningCommand?: (cmd: string | null) => void,
 ): PromptTracker {
   let marker: IMarker | null = null;
   const d = term.parser.registerOscHandler(133, (data) => {
     // OSC 133 A — start of new prompt (between commands).
     if (data.startsWith("A")) {
       if (state) state.inCommand = false;
+      onRunningCommand?.(null);
       marker?.dispose();
       marker = term.registerMarker(0);
     } else if (data.startsWith("B")) {
@@ -55,11 +57,14 @@ export function registerPromptTracker(
       // untrusted until we see D (command exit) or the next A (new prompt).
       if (state) state.inCommand = true;
     } else if (data.startsWith("C")) {
-      // OSC 133 C — command pre-execution marker; still inside command.
+      // OSC 133 C — command pre-execution: data is "C;<command text>".
       if (state) state.inCommand = true;
+      const cmd = data.slice(2).trim();
+      onRunningCommand?.(cmd || null);
     } else if (data.startsWith("D")) {
       // OSC 133 D — command ends.
       if (state) state.inCommand = false;
+      onRunningCommand?.(null);
     }
     return true;
   });

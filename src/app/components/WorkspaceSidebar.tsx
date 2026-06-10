@@ -5,6 +5,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -13,6 +14,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { CSSProperties } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 type WorkspaceItem = { id: string; title: string; kind: string };
@@ -64,7 +66,7 @@ function SortableWorkspaceItem({
       title={ws.title || ws.kind}
       onClick={() => onSelect(ws.id)}
       className={cn(
-        "flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-semibold transition-all select-none cursor-grab active:cursor-grabbing",
+        "flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-semibold transition-all select-none",
         active
           ? "text-white"
           : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -89,8 +91,18 @@ function SortableWorkspaceItem({
 
 export function WorkspaceSidebar({ workspaces, activeId, onSelect, onNew, onReorder }: WorkspaceSidebarProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const [isDragging, setIsDragging] = useState(false);
+
+  function handleDragStart(_event: DragStartEvent) {
+    setIsDragging(true);
+  }
+
+  function handleDragCancel() {
+    setIsDragging(false);
+  }
 
   function handleDragEnd(event: DragEndEvent) {
+    setIsDragging(false);
     const { active, over } = event;
     if (over && active.id !== over.id) {
       onReorder(String(active.id), String(over.id));
@@ -100,9 +112,12 @@ export function WorkspaceSidebar({ workspaces, activeId, onSelect, onNew, onReor
   return (
     <nav
       aria-label="Workspaces"
-      className="flex w-[52px] shrink-0 flex-col items-center gap-1.5 border-r border-border/60 bg-card/60 py-2"
+      className={cn(
+        "flex w-[52px] shrink-0 flex-col items-center gap-1.5 border-r border-border/60 bg-card/60 py-2",
+        isDragging && "[&_*]:!cursor-grabbing cursor-grabbing",
+      )}
     >
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
         <SortableContext items={workspaces.map((w) => w.id)} strategy={verticalListSortingStrategy}>
           {workspaces.map((ws) => (
             <SortableWorkspaceItem

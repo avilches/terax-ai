@@ -38,6 +38,7 @@ export type PanelCallbacks = {
   onSearchReady?: (panelId: string, addon: SearchAddon) => void;
   onExit?: (panelId: string, code: number) => void;
   onCwd?: (panelId: string, cwd: string) => void;
+  onRunningCommand?: (panelId: string, cmd: string | null) => void;
   registerTerminalHandle?: (panelId: string, handle: TerminalPaneHandle | null) => void;
   // Editor callbacks
   onEditorDirtyChange?: (panelId: string, dirty: boolean) => void;
@@ -78,6 +79,7 @@ export function PanelContent({ panel, visible, focused, callbacks }: Props) {
           onSearchReady={callbacks.onSearchReady}
           onExit={callbacks.onExit}
           onCwd={callbacks.onCwd}
+          onRunningCommand={callbacks.onRunningCommand}
         />
       );
 

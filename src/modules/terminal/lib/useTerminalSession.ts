@@ -44,6 +44,7 @@ type Callbacks = {
   onSearchReady?: (addon: SearchAddon) => void;
   onExit?: (code: number) => void;
   onCwd?: (cwd: string) => void;
+  onRunningCommand?: (cmd: string | null) => void;
 };
 
 type Session = {
@@ -384,7 +385,7 @@ function bindLeafToSlot(leafId: string, s: Session): void {
       // 7 emitted by untrusted command output (remote SSH, `cat` of an
       // attacker file, etc.).
       const shellState = createShellIntegrationState();
-      const prompt = registerPromptTracker(term, shellState);
+      const prompt = registerPromptTracker(term, shellState, (cmd) => s.callbacks.onRunningCommand?.(cmd));
       const cwd = registerCwdHandler(
         term,
         (next) => {
@@ -544,6 +545,7 @@ type Options = {
   onSearchReady?: (addon: SearchAddon) => void;
   onExit?: (code: number) => void;
   onCwd?: (cwd: string) => void;
+  onRunningCommand?: (cmd: string | null) => void;
 };
 
 export function useTerminalSession({
@@ -556,9 +558,10 @@ export function useTerminalSession({
   onSearchReady,
   onExit,
   onCwd,
+  onRunningCommand,
 }: Options) {
-  const cbRef = useRef({ onSearchReady, onExit, onCwd });
-  cbRef.current = { onSearchReady, onExit, onCwd };
+  const cbRef = useRef({ onSearchReady, onExit, onCwd, onRunningCommand });
+  cbRef.current = { onSearchReady, onExit, onCwd, onRunningCommand };
 
   // initialCwd seeds the first PTY spawn only. It must NOT be an effect dep:
   // OSC 7 updates the leaf cwd on every `cd`, and re-running the bind effect
@@ -577,6 +580,7 @@ export function useTerminalSession({
         onSearchReady: (a) => cbRef.current.onSearchReady?.(a),
         onExit: (c) => cbRef.current.onExit?.(c),
         onCwd: (c) => cbRef.current.onCwd?.(c),
+        onRunningCommand: (cmd) => cbRef.current.onRunningCommand?.(cmd),
       });
       if (s.visibleNow && s.focusedNow && !s.blocks) focusSlot(leafId);
     });

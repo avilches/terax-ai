@@ -9,9 +9,12 @@ function basename(path: string): string {
 }
 
 export function panelTitle(panel: Panel): string {
-  if (panel.title) return panel.title;
   switch (panel.kind) {
-    case "terminal":        return panel.cwd ?? "shell";
+    case "terminal": {
+      if (panel.runningCommand) return basename(panel.runningCommand.trim().split(/\s+/)[0] ?? "");
+      const label = panel.title ?? panel.cwd;
+      return label?.replace(/\/$/, "") || "shell";
+    }
     case "editor":          return basename(panel.path);
     case "preview":         return panel.url || "Preview";
     case "markdown":        return basename(panel.path);
