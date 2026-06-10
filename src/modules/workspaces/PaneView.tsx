@@ -109,34 +109,44 @@ export function PaneView({
           </div>
         )}
 
-        {/* 5-zone drop overlay — only register/show for the active workspace */}
+        {/* drop overlay — only register/show for the active workspace */}
         {isDragging && isWorkspaceActive && (
           <div className="pointer-events-none absolute inset-0 z-40">
-            <DropZone
-              id={`zone:${pane.id}:top`}
-              hitClassName="pointer-events-auto left-0 right-0 top-0 h-1/4"
-              visualClassName="left-0 right-0 top-0 h-1/2"
-            />
-            <DropZone
-              id={`zone:${pane.id}:bottom`}
-              hitClassName="pointer-events-auto bottom-0 left-0 right-0 h-1/4"
-              visualClassName="bottom-0 left-0 right-0 h-1/2"
-            />
-            <DropZone
-              id={`zone:${pane.id}:left`}
-              hitClassName="pointer-events-auto bottom-1/4 left-0 top-1/4 w-1/4"
-              visualClassName="bottom-0 left-0 top-0 w-1/2"
-            />
-            <DropZone
-              id={`zone:${pane.id}:right`}
-              hitClassName="pointer-events-auto bottom-1/4 right-0 top-1/4 w-1/4"
-              visualClassName="bottom-0 right-0 top-0 w-1/2"
-            />
-            <DropZone
-              id={`zone:${pane.id}:center`}
-              hitClassName="pointer-events-auto bottom-1/4 left-1/4 right-1/4 top-1/4"
-              visualClassName="inset-0 rounded-md"
-            />
+            {pane.panels.length === 1 ? (
+              <DropZone
+                id={`zone:${pane.id}:center`}
+                hitClassName="pointer-events-auto inset-0"
+                visualClassName="inset-0 rounded-md"
+              />
+            ) : (
+              <>
+                <DropZone
+                  id={`zone:${pane.id}:top`}
+                  hitClassName="pointer-events-auto left-0 right-0 top-0 h-1/4"
+                  visualClassName="left-0 right-0 top-0 h-1/2"
+                />
+                <DropZone
+                  id={`zone:${pane.id}:bottom`}
+                  hitClassName="pointer-events-auto bottom-0 left-0 right-0 h-1/4"
+                  visualClassName="bottom-0 left-0 right-0 h-1/2"
+                />
+                <DropZone
+                  id={`zone:${pane.id}:left`}
+                  hitClassName="pointer-events-auto bottom-1/4 left-0 top-1/4 w-1/4"
+                  visualClassName="bottom-0 left-0 top-0 w-1/2"
+                />
+                <DropZone
+                  id={`zone:${pane.id}:right`}
+                  hitClassName="pointer-events-auto bottom-1/4 right-0 top-1/4 w-1/4"
+                  visualClassName="bottom-0 right-0 top-0 w-1/2"
+                />
+                <DropZone
+                  id={`zone:${pane.id}:center`}
+                  hitClassName="pointer-events-auto bottom-1/4 left-1/4 right-1/4 top-1/4"
+                  visualClassName="inset-0 rounded-md"
+                />
+              </>
+            )}
           </div>
         )}
       </div>
