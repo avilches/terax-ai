@@ -4,7 +4,9 @@ export {
   disposeSession,
   leafHasForegroundProcess,
   leafIdForPty,
+  refreshTerminalLeaf,
   respawnSession,
+  terminalDebugStats,
   whenSessionReady,
   writeToSession,
 } from "./lib/useTerminalSession";

@@ -13,6 +13,7 @@ type Props = {
   workspaceId: string;
   workspaceCwd?: string;
   activePaneId: string;
+  isWorkspaceActive: boolean;
   onActivatePanel: (workspaceId: string, panelId: string) => void;
   onClosePanel: (workspaceId: string, panelId: string) => void;
   onFocusPane: (workspaceId: string, paneId: string) => void;
@@ -47,6 +48,7 @@ export function SplitNodeView({ node, activePaneId, ...rest }: Props) {
         workspaceId={rest.workspaceId}
         workspaceCwd={rest.workspaceCwd}
         focused={node.id === activePaneId}
+        isWorkspaceActive={rest.isWorkspaceActive}
         onActivatePanel={rest.onActivatePanel}
         onClosePanel={rest.onClosePanel}
         onFocusPane={rest.onFocusPane}

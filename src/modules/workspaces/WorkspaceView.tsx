@@ -9,7 +9,8 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { refreshTerminalLeaf } from "@/modules/terminal";
+import { useEffect, useState } from "react";
 import { panelIcon, panelTitle } from "./lib/panelTitle";
 import { allPanes, findPanelPane } from "./lib/splitNode";
 import type { Panel, Workspace } from "./lib/types";
@@ -38,6 +39,20 @@ export function WorkspaceView({
   ...rest
 }: Props) {
   const [draggingPanel, setDraggingPanel] = useState<Panel | null>(null);
+
+  // After workspace switch the CSS visibility:hidden is removed. The WebGL
+  // canvas doesn't repaint on its own after that — force a refresh once the
+  // DOM change has been painted.
+  useEffect(() => {
+    const ws = workspaces.find((w) => w.id === activeWorkspaceId);
+    if (!ws) return;
+    const raf = requestAnimationFrame(() => {
+      for (const pane of allPanes(ws.paneTree)) {
+        if (pane.activePanelId) refreshTerminalLeaf(pane.activePanelId);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeWorkspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -81,6 +96,17 @@ export function WorkspaceView({
     }
     if (!sourceWorkspaceId) return;
 
+    // Ensure the drop target belongs to the same workspace as the source panel.
+    // Inactive workspaces share the same screen position (absolute inset-0) and
+    // could produce false collision hits if their zones were registered.
+    const targetInSourceWorkspace = workspaces
+      .find((ws) => ws.id === sourceWorkspaceId);
+    if (!targetInSourceWorkspace) return;
+    const targetPaneExists = allPanes(targetInSourceWorkspace.paneTree).some(
+      (p) => p.id === targetPaneId,
+    );
+    if (!targetPaneExists) return;
+
     if (zone === "center") {
       if (sourcePaneId === targetPaneId) return;
       onMovePanel(sourceWorkspaceId, panelId, targetPaneId);
@@ -102,7 +128,7 @@ export function WorkspaceView({
             key={ws.id}
             className={cn(
               "absolute inset-0",
-              ws.id !== activeWorkspaceId && "invisible pointer-events-none",
+              ws.id !== activeWorkspaceId && "opacity-0 invisible",
             )}
           >
             <SplitNodeView
@@ -110,6 +136,7 @@ export function WorkspaceView({
               workspaceId={ws.id}
               workspaceCwd={ws.cwd}
               activePaneId={ws.activePaneId}
+              isWorkspaceActive={ws.id === activeWorkspaceId}
               onActivatePanel={rest.onActivatePanel}
               onClosePanel={rest.onClosePanel}
               onFocusPane={rest.onFocusPane}
