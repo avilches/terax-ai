@@ -1,10 +1,11 @@
 import { useDroppable, useDndMonitor } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PaneTabBar } from "./PaneTabBar";
 import { PanelContent } from "./PanelContent";
 import type { PanelCallbacks } from "./PanelContent";
 import type { PaneNode } from "./lib/types";
+import { MIN_PANE_SPLIT_PX } from "./lib/constants";
 
 type Props = {
   pane: PaneNode;
@@ -60,6 +61,19 @@ export function PaneView({
   callbacks,
 }: Props) {
   const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [tooSmall, setTooSmall] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setTooSmall(width < MIN_PANE_SPLIT_PX || height < MIN_PANE_SPLIT_PX);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useDndMonitor({
     onDragStart: () => setIsDragging(true),
@@ -73,6 +87,8 @@ export function PaneView({
 
   return (
     <div
+      ref={containerRef}
+      data-pane-id={pane.id}
       className="relative flex h-full flex-col overflow-hidden"
       onMouseDownCapture={handleFocus}
       onFocus={handleFocus}
@@ -112,7 +128,7 @@ export function PaneView({
         {/* drop overlay — only register/show for the active workspace */}
         {isDragging && isWorkspaceActive && (
           <div className="pointer-events-none absolute inset-0 z-40">
-            {pane.panels.length === 1 ? (
+            {pane.panels.length === 1 || tooSmall ? (
               <DropZone
                 id={`zone:${pane.id}:center`}
                 hitClassName="pointer-events-auto inset-0"

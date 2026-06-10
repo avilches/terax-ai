@@ -39,7 +39,6 @@ import { StatusBar } from "@/modules/statusbar";
 import {
   clearFocusedTerminal,
   disposeSession,
-  terminalDebugStats,
   type TerminalPaneHandle,
   useTerminalFileDrop,
   writeToSession,
@@ -57,6 +56,7 @@ import {
   useWorkspaces,
   WorkspaceView,
 } from "@/modules/workspaces";
+import { MIN_PANE_SPLIT_PX } from "@/modules/workspaces/lib/constants";
 import type { SearchAddon } from "@xterm/addon-search";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -162,38 +162,6 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
   }, [activeWorkspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Debug logging ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    console.group(`[terax:state] ${workspaces.length} workspace(s)`);
-    for (const ws of workspaces) {
-      const isActive = ws.id === activeWorkspaceId;
-      const panes = allPanes(ws.paneTree);
-      console.group(`${isActive ? "▶" : " "} ws=${ws.id.slice(-8)} "${ws.title}" activePaneId=…${ws.activePaneId.slice(-8)}`);
-      for (const pane of panes) {
-        const isActivePane = pane.id === ws.activePaneId;
-        console.group(`${isActivePane ? "▶" : " "} pane=${pane.id.slice(-8)} activePanelId=…${(pane.activePanelId ?? "null").slice(-8)}`);
-        for (const panel of pane.panels) {
-          const isActivePanel = panel.id === pane.activePanelId;
-          let extra = "";
-          if (panel.kind === "terminal") extra = ` cwd=${panel.cwd ?? "?"}`;
-          else if (panel.kind === "editor") extra = ` path=${panel.path}`;
-          else if (panel.kind === "preview") extra = ` url=${panel.url}`;
-          console.log(`  ${isActivePanel ? "▶" : " "} [${panel.kind}] panel=${panel.id.slice(-8)}${extra}`);
-        }
-        console.groupEnd();
-      }
-      console.groupEnd();
-    }
-    const dbg = terminalDebugStats();
-    console.group(`[terax:pool] sessions=${dbg.sessionCount} slots=${dbg.slots.length} webgl=${dbg.webglContexts} idle=${dbg.idleSlots}`);
-    for (const s of dbg.sessions) {
-      const slot = dbg.slots.find((sl) => sl.leafId === s.leafId);
-      console.log(`  session=…${s.leafId.slice(-8)} visible=${s.visible} hasSlot=${s.hasSlot} pty=${s.pty} exited=${s.shellExited}${slot ? ` [slot${slot.id}${slot.webgl ? " webgl" : ""}]` : ""}`);
-    }
-    console.groupEnd();
-    console.groupEnd();
-  }, [workspaces, activeWorkspaceId]);
 
   const init = usePreferencesStore((s) => s.init);
   useEffect(() => {
@@ -738,7 +706,6 @@ export default function App() {
         });
       },
       "workspace.new": () => addWorkspace(inheritedCwd()),
-      "tab.newPrivate": () => addWorkspace(inheritedCwd()),
       "tab.newPreview": () => openPreviewInPanel(""),
       "tab.newEditor": () => setNewEditorOpen(true),
       "tab.close": handleCloseActivePanel,
@@ -750,11 +717,15 @@ export default function App() {
       },
       "pane.splitRight": () => {
         if (!activeWorkspace) return;
+        const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
+        if (el && el.getBoundingClientRect().width < MIN_PANE_SPLIT_PX) return;
         const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "horizontal");
         openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
       },
       "pane.splitDown": () => {
         if (!activeWorkspace) return;
+        const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
+        if (el && el.getBoundingClientRect().height < MIN_PANE_SPLIT_PX) return;
         const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "vertical");
         openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
       },
@@ -873,7 +844,6 @@ export default function App() {
             },
             openNewWorkspace: () => addWorkspace(inheritedCwd()),
             openNewBlock: () => addWorkspace(inheritedCwd()),
-            openNewPrivate: () => addWorkspace(inheritedCwd()),
             openNewEditor: () => setNewEditorOpen(true),
             openNewPreview: () => openPreviewInPanel(""),
             openGitGraph: openGitGraphFromContext,
@@ -881,11 +851,15 @@ export default function App() {
             closeActiveTabOrPane: handleCloseActivePanel,
             splitPaneRight: () => {
               if (!activeWorkspace) return;
+              const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
+              if (el && el.getBoundingClientRect().width < MIN_PANE_SPLIT_PX) return;
               const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "horizontal");
               openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
             },
             splitPaneDown: () => {
               if (!activeWorkspace) return;
+              const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
+              if (el && el.getBoundingClientRect().height < MIN_PANE_SPLIT_PX) return;
               const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "vertical");
               openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
             },
