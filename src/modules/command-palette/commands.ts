@@ -7,7 +7,6 @@ import {
   FileEditIcon,
   FileSearchIcon,
   Globe02Icon,
-  IncognitoIcon,
   KeyboardIcon,
   LayoutTwoColumnIcon,
   LayoutTwoRowIcon,
@@ -41,7 +40,6 @@ export type CommandPaletteActionContext = {
   openNewTab: () => void;
   openNewWorkspace: () => void;
   openNewBlock: () => void;
-  openNewPrivate: () => void;
   openNewEditor: () => void;
   openNewPreview: () => void;
   openGitGraph: () => void;
@@ -122,15 +120,6 @@ export function createCommandItems(
       keywords: ["blocks", "warp", "command blocks", "terminal"],
       icon: DashboardSquare01Icon,
       run: ctx.openNewBlock,
-    },
-    {
-      id: "tab.newPrivate",
-      title: "New private terminal",
-      group: "Tabs",
-      keywords: ["privacy", "private", "incognito", "hidden from ai"],
-      icon: IncognitoIcon,
-      shortcutId: "tab.newPrivate",
-      run: ctx.openNewPrivate,
     },
     {
       id: "tab.newEditor",

@@ -8,7 +8,7 @@ export type ShortcutId =
   | "commandPalette.open"
   | "commandPalette.content"
   | "tab.new"
-  | "tab.newPrivate"
+
   | "tab.newPreview"
   | "tab.newEditor"
   | "tab.close"
@@ -87,12 +87,7 @@ export const SHORTCUTS: Shortcut[] = [
     group: "Tabs",
     defaultBindings: [{ [MOD_PROP]: true, key: "t" }],
   },
-  {
-    id: "tab.newPrivate",
-    label: "New private terminal",
-    group: "Tabs",
-    defaultBindings: [{ [MOD_PROP]: true, key: "r" }],
-  },
+
   {
     id: "tab.newPreview",
     label: "New web preview",
@@ -212,13 +207,13 @@ export const SHORTCUTS: Shortcut[] = [
     id: "workspace.prev",
     label: "Previous workspace",
     group: "General",
-    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "[" }],
+    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "{" }],
   },
   {
     id: "workspace.next",
     label: "Next workspace",
     group: "General",
-    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "]" }],
+    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "}" }],
   },
   {
     id: "view.zoomIn",
@@ -280,6 +275,16 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   "Search",
   "Editor",
 ];
+
+export function bindingsEqual(a: KeyBinding, b: KeyBinding): boolean {
+  return (
+    a.key.toLowerCase() === b.key.toLowerCase() &&
+    !!a.ctrl === !!b.ctrl &&
+    !!a.shift === !!b.shift &&
+    !!a.alt === !!b.alt &&
+    !!a.meta === !!b.meta
+  );
+}
 
 /**
  * Matching logic: checks if a KeyboardEvent matches a KeyBinding.

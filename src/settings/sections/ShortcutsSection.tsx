@@ -4,6 +4,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { setShortcuts } from "@/modules/settings/store";
 import {
+  bindingsEqual,
   getBindingTokens,
   SHORTCUTS,
   SHORTCUT_GROUPS,
@@ -13,11 +14,12 @@ import {
 } from "@/modules/shortcuts/shortcuts";
 import {
   ArrowTurnBackwardIcon,
+  CancelCircleIcon,
+  Refresh01Icon,
   Search01Icon,
-  Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { SectionHeader } from "../components/SectionHeader";
 import {
   AlertDialog,
@@ -34,7 +36,18 @@ export function ShortcutsSection() {
   const userShortcuts = usePreferencesStore((s) => s.shortcuts);
   const [search, setSearch] = useState("");
   const [recordingId, setRecordingId] = useState<ShortcutId | null>(null);
+  const [recordingConflict, setRecordingConflict] = useState<{ binding: KeyBinding; with: Shortcut } | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+
+  const startRecording = (id: ShortcutId) => {
+    setRecordingId(id);
+    setRecordingConflict(null);
+  };
+
+  const stopRecording = () => {
+    setRecordingId(null);
+    setRecordingConflict(null);
+  };
 
   const filteredShortcuts = useMemo(() => {
     // Filter out internal/non-overridable shortcuts like tab.selectByIndex.
@@ -51,7 +64,7 @@ export function ShortcutsSection() {
   const onRecord = (id: ShortcutId, binding: KeyBinding) => {
     const next = { ...userShortcuts, [id]: [binding] };
     void setShortcuts(next);
-    setRecordingId(null);
+    stopRecording();
   };
 
   const onClear = (id: ShortcutId) => {
@@ -123,12 +136,15 @@ export function ShortcutsSection() {
                     key={s.id}
                     shortcut={s}
                     isRecording={recordingId === s.id}
-                    onStartRecording={() => setRecordingId(s.id)}
-                    onStopRecording={() => setRecordingId(null)}
+                    conflict={recordingId === s.id ? recordingConflict : null}
+                    onConflict={setRecordingConflict}
+                    onStartRecording={() => startRecording(s.id)}
+                    onStopRecording={stopRecording}
                     onRecord={(b) => onRecord(s.id, b)}
                     onClear={() => onClear(s.id)}
                     onReset={() => onResetShortcut(s.id)}
                     userBindings={userShortcuts[s.id]}
+                    userShortcuts={userShortcuts}
                   />
                 ))}
               </div>
@@ -164,21 +180,27 @@ export function ShortcutsSection() {
 function ShortcutRow({
   shortcut,
   isRecording,
+  conflict,
+  onConflict,
   onStartRecording,
   onStopRecording,
   onRecord,
   onClear,
   onReset,
   userBindings,
+  userShortcuts,
 }: {
   shortcut: Shortcut;
   isRecording: boolean;
+  conflict: { binding: KeyBinding; with: Shortcut } | null;
+  onConflict: (c: { binding: KeyBinding; with: Shortcut } | null) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onRecord: (b: KeyBinding) => void;
   onClear: () => void;
   onReset: () => void;
   userBindings?: KeyBinding[];
+  userShortcuts: Record<ShortcutId, KeyBinding[]>;
 }) {
   const bindings =
     userBindings !== undefined ? userBindings : shortcut.defaultBindings;
@@ -193,7 +215,14 @@ function ShortcutRow({
 
       <div className="flex items-center gap-2">
         {isRecording ? (
-          <Recorder onRecord={onRecord} onCancel={onStopRecording} />
+          <Recorder
+            currentId={shortcut.id}
+            userShortcuts={userShortcuts}
+            conflict={conflict}
+            onConflict={onConflict}
+            onRecord={onRecord}
+            onCancel={onStopRecording}
+          />
         ) : (
           <>
             <div
@@ -219,26 +248,15 @@ function ShortcutRow({
             </div>
 
             <div className="flex items-center gap-1">
-              {isModified && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 text-muted-foreground hover:text-foreground"
-                  onClick={onReset}
-                  title="Reset to default"
-                >
-                  <HugeiconsIcon icon={ArrowTurnBackwardIcon} size={12} />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7 text-muted-foreground hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100"
-                onClick={onClear}
-                title="Clear shortcut"
-              >
-                <HugeiconsIcon icon={Delete02Icon} size={12} />
-              </Button>
+              {!hasBindings && isModified ? (
+                <ActionButton onClick={onReset} title="Reset to default">
+                  <HugeiconsIcon icon={Refresh01Icon} size={11} />
+                </ActionButton>
+              ) : hasBindings ? (
+                <ActionButton onClick={onClear} title="Clear shortcut">
+                  <HugeiconsIcon icon={CancelCircleIcon} size={12} />
+                </ActionButton>
+              ) : null}
             </div>
           </>
         )}
@@ -247,80 +265,131 @@ function ShortcutRow({
   );
 }
 
+function findConflict(
+  binding: KeyBinding,
+  currentId: ShortcutId,
+  userShortcuts: Record<ShortcutId, KeyBinding[]>,
+): Shortcut | null {
+  for (const s of SHORTCUTS) {
+    if (s.id === currentId) continue;
+    const bindings = s.id in userShortcuts ? userShortcuts[s.id] : s.defaultBindings;
+    if (bindings.some((b) => bindingsEqual(b, binding))) return s;
+  }
+  return null;
+}
+
+function ActionButton({
+  onClick,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="flex size-[22px] cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+    >
+      {children}
+    </button>
+  );
+}
+
 function Recorder({
+  currentId,
+  userShortcuts,
+  conflict,
+  onConflict,
   onRecord,
   onCancel,
 }: {
+  currentId: ShortcutId;
+  userShortcuts: Record<ShortcutId, KeyBinding[]>;
+  conflict: { binding: KeyBinding; with: Shortcut } | null;
+  onConflict: (c: { binding: KeyBinding; with: Shortcut } | null) => void;
   onRecord: (b: KeyBinding) => void;
   onCancel: () => void;
 }) {
-  const [_mods, setMods] = useState({
-    ctrl: false,
-    shift: false,
-    alt: false,
-    meta: false,
-  });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        onCancel();
+      }
+    };
+    window.addEventListener("mousedown", onMouseDown);
+    return () => window.removeEventListener("mousedown", onMouseDown);
+  }, [onCancel]);
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
       if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
         onCancel();
         return;
       }
 
-      const isMod = ["Control", "Shift", "Alt", "Meta"].includes(e.key);
-      if (isMod) {
-        setMods({
-          ctrl: e.ctrlKey,
-          shift: e.shiftKey,
-          alt: e.altKey,
-          meta: e.metaKey,
-        });
-        return;
-      }
+      if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
 
-      // Require at least one primary modifier (Ctrl, Alt, Meta).
-      // Reject Shift‑only shortcuts that would insert a character.
       const hasPrimaryModifier = e.ctrlKey || e.altKey || e.metaKey;
-      const isCharacterKey = e.key.length === 1; // anything that types a glyph
-      // this blocks shortcuts such as Shift+2 which would be "@" and Shift+, which would be "<" on many layouts
-      if (!hasPrimaryModifier && (!e.shiftKey || isCharacterKey)) {
-        return;
-      }
-      onRecord({
+      const isCharacterKey = e.key.length === 1;
+      if (!hasPrimaryModifier && (!e.shiftKey || isCharacterKey)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const binding: KeyBinding = {
         key: e.key,
         ctrl: e.ctrlKey,
         shift: e.shiftKey,
         alt: e.altKey,
         meta: e.metaKey,
-      });
-    };
+      };
 
-    const onUp = (e: KeyboardEvent) => {
-      const isMod = ["Control", "Shift", "Alt", "Meta"].includes(e.key);
-      if (isMod) {
-        setMods({
-          ctrl: e.ctrlKey,
-          shift: e.shiftKey,
-          alt: e.altKey,
-          meta: e.metaKey,
-        });
+      const conflicting = findConflict(binding, currentId, userShortcuts);
+      if (conflicting) {
+        onConflict({ binding, with: conflicting });
+        return;
       }
+
+      onConflict(null);
+      onRecord(binding);
     };
 
     window.addEventListener("keydown", onDown, { capture: true });
-    window.addEventListener("keyup", onUp, { capture: true });
-    return () => {
-      window.removeEventListener("keydown", onDown, { capture: true });
-      window.removeEventListener("keyup", onUp, { capture: true });
-    };
-  }, [onRecord, onCancel]);
+    return () => window.removeEventListener("keydown", onDown, { capture: true });
+  }, [currentId, userShortcuts, onConflict, onRecord, onCancel]);
+
+  if (conflict) {
+    return (
+      <div ref={containerRef} className="flex items-center gap-2">
+        <span className="text-[11px] text-destructive">
+          Used by "{conflict.with.label}"
+        </span>
+        <div className="flex items-center gap-1 rounded bg-destructive/10 px-2 py-1 text-[11px] ring-1 ring-destructive/50">
+          <KbdGroup>
+            {getBindingTokens(conflict.binding).map((t, i) => (
+              <Kbd key={i} className="border-destructive/60 text-destructive bg-destructive/10">
+                {t}
+              </Kbd>
+            ))}
+          </KbdGroup>
+        </div>
+        <ActionButton onClick={onCancel} title="Cancel">
+          <HugeiconsIcon icon={CancelCircleIcon} size={12} />
+        </ActionButton>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center gap-2 rounded bg-accent/50 px-2 py-1 text-[11px] ring-1 ring-accent">
+    <div ref={containerRef} className="flex items-center gap-2 rounded bg-accent/50 px-2 py-1 text-[11px] ring-1 ring-accent">
       <span className="animate-pulse font-medium">Recording...</span>
       <span className="text-muted-foreground">(Esc to cancel)</span>
     </div>
