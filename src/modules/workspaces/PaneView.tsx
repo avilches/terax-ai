@@ -97,7 +97,7 @@ export function PaneView({
           >
             <PanelContent
               panel={panel}
-              visible={panel.id === pane.activePanelId}
+              visible={panel.id === pane.activePanelId && isWorkspaceActive}
               focused={focused && panel.id === pane.activePanelId}
               callbacks={callbacks}
             />
