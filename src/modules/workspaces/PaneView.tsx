@@ -69,6 +69,7 @@ export function PaneView({
         panels={pane.panels}
         activePanelId={pane.activePanelId}
         paneFocused={focused}
+        workspaceId={workspaceId}
         onActivate={(panelId) => onActivatePanel(workspaceId, panelId)}
         onClose={(panelId) => onClosePanel(workspaceId, panelId)}
         onNewTerminal={() => onNewTerminal(workspaceId, pane.id)}

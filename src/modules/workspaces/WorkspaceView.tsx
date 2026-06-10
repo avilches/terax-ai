@@ -39,6 +39,7 @@ export function WorkspaceView({
   ...rest
 }: Props) {
   const [draggingPanel, setDraggingPanel] = useState<Panel | null>(null);
+  const [draggingWorkspaceId, setDraggingWorkspaceId] = useState<string | null>(null);
 
   // After workspace switch the CSS visibility:hidden is removed. The WebGL
   // canvas doesn't repaint on its own after that — force a refresh once the
@@ -62,12 +63,13 @@ export function WorkspaceView({
     const panelId = String(event.active.id);
     for (const ws of workspaces) {
       const result = findPanelPane(ws.paneTree, panelId);
-      if (result) { setDraggingPanel(result.panel); break; }
+      if (result) { setDraggingPanel(result.panel); setDraggingWorkspaceId(ws.id); break; }
     }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setDraggingPanel(null);
+    setDraggingWorkspaceId(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -150,7 +152,7 @@ export function WorkspaceView({
       <DragOverlay dropAnimation={null}>
         {draggingPanel && (
           <div className="pointer-events-none flex h-5 items-center gap-1 rounded bg-muted px-1.5 text-[11px] text-foreground shadow-lg ring-1 ring-primary/40 opacity-90">
-            <span className="shrink-0 text-[10px] opacity-70">{panelIcon(draggingPanel)}</span>
+            <span className="shrink-0 opacity-70">{panelIcon(draggingPanel, draggingWorkspaceId ?? undefined)}</span>
             <span className="max-w-[120px] truncate">{panelTitle(draggingPanel)}</span>
           </div>
         )}

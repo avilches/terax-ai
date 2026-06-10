@@ -7,6 +7,7 @@ type Props = {
   panels: Panel[];
   activePanelId: string | null;
   paneFocused: boolean;
+  workspaceId: string;
   onActivate: (panelId: string) => void;
   onClose: (panelId: string) => void;
   onNewTerminal: () => void;
@@ -16,17 +17,20 @@ function DraggableTab({
   panel,
   activePanelId,
   paneFocused,
+  workspaceId,
   onActivate,
   onClose,
 }: {
   panel: Panel;
   activePanelId: string | null;
   paneFocused: boolean;
+  workspaceId: string;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: panel.id });
   const active = panel.id === activePanelId;
+  const title = panelTitle(panel);
 
   return (
     <div
@@ -34,7 +38,7 @@ function DraggableTab({
       {...attributes}
       {...listeners}
       className={cn(
-        "group relative flex h-5 min-w-0 max-w-[140px] shrink-0 cursor-grab active:cursor-grabbing select-none items-center gap-1 rounded px-1.5 text-[11px] transition-colors",
+        "group relative flex h-5 min-w-[100px] max-w-[200px] shrink-0 cursor-grab active:cursor-grabbing select-none items-center gap-1 rounded px-1.5 text-[11px] transition-colors",
         active
           ? "bg-muted text-foreground"
           : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -45,8 +49,14 @@ function DraggableTab({
       {active && paneFocused && (
         <div className="absolute inset-x-0 top-0 h-0.5 rounded-t bg-primary" />
       )}
-      <span className="shrink-0 text-[10px] opacity-70">{panelIcon(panel)}</span>
-      <span className="truncate">{panelTitle(panel)}</span>
+      <span className="shrink-0 opacity-70">{panelIcon(panel, workspaceId)}</span>
+      <span
+        className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+        style={{ direction: panel.kind === "terminal" ? "rtl" : "ltr", unicodeBidi: "plaintext" }}
+        title={title}
+      >
+        {title}
+      </span>
       {panel.kind === "editor" && panel.dirty && (
         <span className="shrink-0 text-[8px] text-primary">●</span>
       )}
@@ -65,7 +75,7 @@ function DraggableTab({
   );
 }
 
-export function PaneTabBar({ panels, activePanelId, paneFocused, onActivate, onClose, onNewTerminal }: Props) {
+export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, onActivate, onClose, onNewTerminal }: Props) {
   return (
     <div className="flex h-7 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border/60 bg-card/60 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {panels.map((p) => (
@@ -74,6 +84,7 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, onActivate, onC
           panel={p}
           activePanelId={activePanelId}
           paneFocused={paneFocused}
+          workspaceId={workspaceId}
           onActivate={onActivate}
           onClose={onClose}
         />
