@@ -105,6 +105,7 @@ export default function App() {
     closePanel,
     updatePanelData,
     setTerminalPanelCwd,
+    setTerminalRunningCommand,
     findPanelGlobal,
     resetWorkspaces,
   } = useWorkspaces(initialOpts);
@@ -193,6 +194,11 @@ export default function App() {
     console.groupEnd();
     console.groupEnd();
   }, [workspaces, activeWorkspaceId]);
+
+  const init = usePreferencesStore((s) => s.init);
+  useEffect(() => {
+    void init();
+  }, [init]);
 
   const rightPanelRef = useRef<RightPanelHandle>(null);
   const rightPanelOpen = usePreferencesStore((s) => s.rightPanelOpen);
@@ -418,6 +424,10 @@ export default function App() {
           }
         }
       },
+      onRunningCommand: (panelId, cmd) => {
+        const found = findPanelGlobal(panelId);
+        if (found) setTerminalRunningCommand(found.workspace.id, panelId, cmd);
+      },
       registerTerminalHandle: (panelId, h) => {
         if (h) terminalHandles.current.set(panelId, h);
         else terminalHandles.current.delete(panelId);
@@ -477,6 +487,7 @@ export default function App() {
       findPanelGlobal,
       closePanel,
       setTerminalPanelCwd,
+      setTerminalRunningCommand,
       updatePanelData,
       activeWorkspace,
       openPanel,
