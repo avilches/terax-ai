@@ -1,7 +1,3 @@
-# TERAX.md
-
-Terax loads `TERAX.md` from the workspace root as agent memory (similar to AGENTS.md / CLAUDE.md). This file is also the project's living architecture doc — read it before making changes.
-
 ## Project
 
 **Terax** — open-source terminal emulator. Tauri 2 + Rust (`portable-pty`) backend, React 19 + TypeScript + xterm.js (webgl) client.
@@ -124,6 +120,32 @@ Each module is self-contained, exports a thin barrel via `index.ts`, and owns it
   - **Linux**: deb depends `libwebkit2gtk-4.1-0`, `libgtk-3-0`; rpm `webkit2gtk4.1`, `gtk3`; AppImage bundles its media framework.
   - **Windows**: NSIS installer in `currentUser` mode (no admin required), WebView2 via `embedBootstrapper` (offline install).
 - Auto-updater configured with a public minisign key; release artifacts at `https://github.com/crynta/terax-ai/releases/latest/download/latest.json`.
+
+## Living documentation
+
+Two files must stay in sync with the codebase at all times. Update them in the same commit as the code change, never as a follow-up.
+
+### `docs/ARCHITECTURE.md`
+
+The canonical reference for how Terax works: module map, IPC surface, data model, technical decisions with user-visible effects, known limitations. Read it before touching any subsystem you have not fully explored. Update it whenever:
+
+- A module is added, removed, or significantly restructured.
+- The Workspace/Pane/Panel data model changes.
+- A new Tauri command is registered or an existing one is removed.
+- A technical decision with user-visible effects changes (rendering strategy, persistence, path handling, etc.).
+- A known limitation is resolved or a new one is discovered.
+
+Do not restate what the code already makes obvious. The doc covers the *why* and the *non-obvious what*.
+
+### `docs/FORK.md`
+
+Documents every significant divergence from the upstream repo ([crynta/terax-ai](https://github.com/crynta/terax-ai)): features removed, features added, architectural departures, and the planned roadmap. Update it whenever:
+
+- A feature present in the upstream is removed from this fork.
+- A feature that does not exist in the upstream is added to this fork.
+- A new phase or roadmap item is completed or added.
+
+Keep entries factual and grouped by phase or theme. The goal is a clear answer to "what is this fork and why does it exist."
 
 ### Known gotchas
 
