@@ -44,7 +44,7 @@ function DraggableTab({
       data-panel-id={panel.id}
       onClick={() => onActivate(panel.id)}
       className={cn(
-        "group relative flex min-w-[100px] max-w-[200px] shrink-0 active:cursor-grabbing select-none items-center gap-1 px-1.5 text-[11px] transition-colors",
+        "group relative flex min-w-[100px] max-w-[200px] shrink-0 cursor-grab active:cursor-grabbing select-none touch-none items-center gap-1 px-1.5 text-[11px] transition-colors",
         connected
           ? [
               "self-stretch border-r border-border/30",

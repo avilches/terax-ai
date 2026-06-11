@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { refreshTerminalLeaf } from "@/modules/terminal";
 import { useEffect, useState } from "react";
 import { panelIcon, panelTitle } from "./lib/panelTitle";
+
 import { allPanes, findPanelPane } from "./lib/splitNode";
 import type { Panel, Workspace } from "./lib/types";
 import type { UseWorkspacesReturn } from "./lib/useWorkspaces";
@@ -60,6 +61,7 @@ export function WorkspaceView({
   );
 
   function handleDragStart(event: DragStartEvent) {
+    document.body.style.cursor = "grabbing";
     const panelId = String(event.active.id);
     for (const ws of workspaces) {
       const result = findPanelPane(ws.paneTree, panelId);
@@ -68,11 +70,13 @@ export function WorkspaceView({
   }
 
   function handleDragCancel() {
+    document.body.style.cursor = "";
     setDraggingPanel(null);
     setDraggingWorkspaceId(null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    document.body.style.cursor = "";
     setDraggingPanel(null);
     setDraggingWorkspaceId(null);
     const { active, over } = event;

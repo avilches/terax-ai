@@ -643,10 +643,31 @@ const SLOT_STALE_MS = 10_000;
 const WEBGL_REAP_GRACE_MS = 30_000;
 const SLOT_REAP_GRACE_MS = 45_000;
 const IDLE_SLOTS_KEEP_WARM = 1;
+// WKWebView (Tauri/macOS) allows roughly 8–16 concurrent WebGL contexts.
+// Staying under this threshold prevents the "too many active WebGL contexts"
+// warning and the silent loss of the oldest context.
+const WEBGL_MAX_CONTEXTS = 7;
 
 function attachWebgl(slot: Slot): void {
   if (slot.webglAddon || !slot.term.element) return;
   if (!usePreferencesStore.getState().terminalWebglEnabled) return;
+
+  // Before creating a new context, proactively reap the oldest idle slot's
+  // context if we are at the limit. If all slots are active, bail out to avoid
+  // evicting a visible terminal.
+  const liveCount = slots.filter((s) => !!s.webglAddon).length;
+  if (liveCount >= WEBGL_MAX_CONTEXTS) {
+    const oldest = slots
+      .filter((s) => s.currentLeafId === null && !!s.webglAddon)
+      .sort((a, b) => a.lastUsedAt - b.lastUsedAt)[0];
+    if (oldest) {
+      cancelWebglReap(oldest);
+      disposeSlotWebgl(oldest);
+    } else {
+      return;
+    }
+  }
+
   const elem = slot.term.element;
   const before = new Set<HTMLCanvasElement>(
     elem.querySelectorAll<HTMLCanvasElement>("canvas"),

@@ -219,6 +219,18 @@ Update the relevant file(s) whenever:
 
 Do not restate what the code already makes obvious. The doc covers the *why* and the *non-obvious what*.
 
+### `docs/WORKSPACES.md` · `docs/WORKSPACES_GOTCHAS.md`
+
+Deep-dive into the workspace rendering stack and terminal slot pool:
+
+- **`docs/WORKSPACES.md`** — Workspace/Pane/Panel data model, render tree (WorkspaceView → PaneView → PanelContent),
+  terminal session lifecycle, renderer slot pool (slot acquire/bind/unbind/reap, WebGL context management, dormant ring
+  buffer), drag-and-drop architecture, resize handle constraints. Update whenever the rendering strategy, pool
+  constants, visibility semantics, or drag-and-drop wiring changes.
+- **`docs/WORKSPACES_GOTCHAS.md`** — bugs that were non-obvious to diagnose, with root cause, failed attempts, and
+  confirmed fix. Add an entry whenever a bug in this subsystem takes more than one attempt to fix, so it is not
+  re-discovered.
+
 ### `docs/FORK.md`
 
 Documents every significant divergence from the upstream repo ([crynta/terax-ai](https://github.com/crynta/terax-ai)):
