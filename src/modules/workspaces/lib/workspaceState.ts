@@ -1,10 +1,11 @@
-import { LazyStore } from "@tauri-apps/plugin-store";
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { Panel, SplitNode, Workspace } from "./types";
 
-const STORE_PATH = "workspace-state.json";
-const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: false });
-
 type SavedState = { workspaces: Workspace[]; activeIndex: number };
+
+// WindowEntry mirrors the Rust WindowEntry struct (camelCase via serde rename_all).
+type WindowEntry = { workspaces: Workspace[]; activeIndex: number };
 
 let cached: SavedState | null = null;
 
@@ -26,9 +27,10 @@ function sanitizeWorkspace(w: Workspace): Workspace {
 
 export async function initWorkspaceState(): Promise<void> {
   try {
-    const saved = await store.get<SavedState>("state");
-    if (saved && Array.isArray(saved.workspaces) && saved.workspaces.length > 0) {
-      cached = saved;
+    const label = getCurrentWebviewWindow().label;
+    const entry = await invoke<WindowEntry | null>("window_get_state", { label });
+    if (entry && Array.isArray(entry.workspaces) && entry.workspaces.length > 0) {
+      cached = { workspaces: entry.workspaces, activeIndex: entry.activeIndex };
     }
   } catch {
     cached = null;
@@ -41,17 +43,17 @@ export function getSavedWorkspaceState(): SavedState | null {
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-export function saveWorkspaceState(
-  workspaces: Workspace[],
-  activeIndex: number,
-): void {
+export function saveWorkspaceState(workspaces: Workspace[], activeIndex: number): void {
   if (saveTimer !== null) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    const state: SavedState = {
+    const label = getCurrentWebviewWindow().label;
+    void invoke("window_save_workspace_state", {
+      label,
       workspaces: workspaces.map(sanitizeWorkspace),
-      activeIndex: Math.max(0, Math.min(activeIndex, workspaces.length - 1)),
-    };
-    void store.set("state", state).then(() => store.save()).catch(() => {});
+      // Rust param name is active_index (snake_case); Tauri 2 does NOT auto-convert.
+      // eslint-disable-next-line camelcase
+      active_index: Math.max(0, Math.min(activeIndex, workspaces.length - 1)),
+    }).catch(() => {});
   }, 800);
 }

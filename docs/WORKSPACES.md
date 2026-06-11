@@ -27,8 +27,9 @@ A `Panel` is a tagged union on `kind`: `terminal` | `editor` | `preview` | `mark
 `git-diff` | `git-history` | `git-commit-file`. All kinds share `id`, `title`; each kind carries
 its own extra fields (e.g., `cwd`, `runningCommand`, `dirty`).
 
-State is persisted to `workspace-state.json` via `tauri-plugin-store`, debounced 300ms on every
-mutation. The workspace sidebar (52px, left edge) lists workspaces; clicking switches
+State is persisted per-window to `terax-windows.json` via the `window_save_workspace_state` IPC
+command, debounced 800ms on every mutation. Each window reads its own saved state on mount via
+`window_get_state`. The workspace sidebar (52px, left edge) lists workspaces; clicking switches
 `activeWorkspaceId`.
 
 ---
