@@ -778,6 +778,20 @@ export function applyWebglPreference(enabled: boolean): void {
   }
 }
 
+export function retryMissingWebgl(): void {
+  if (!usePreferencesStore.getState().terminalWebglEnabled) return;
+  for (const slot of slots) {
+    if (slot.currentLeafId !== null && !slot.webglAddon) {
+      attachWebgl(slot);
+      if (slot.webglAddon) {
+        try {
+          slot.term.refresh(0, slot.term.rows - 1);
+        } catch {}
+      }
+    }
+  }
+}
+
 export function applyFontSize(size: number): void {
   for (const slot of slots) {
     if (slot.term.options.fontSize === size) continue;
