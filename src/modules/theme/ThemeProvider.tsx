@@ -18,7 +18,7 @@ import {
   type EditorThemeId,
   type ThemePref,
 } from "@/modules/settings/store";
-import { applyTheme, clearTheme } from "./applyTheme";
+import { applyTheme } from "./applyTheme";
 import {
   listCustomThemes,
   onCustomThemesChange,
@@ -40,6 +40,7 @@ type ThemeProviderState = {
   resolvedMode: "dark" | "light";
   themeId: string;
   customThemes: Theme[];
+  resolvedTheme: Theme;
   setMode: (mode: ThemePref) => void;
   setThemeId: (id: string) => void;
   /** Apply a theme transiently without persisting; null reverts to committed. */
@@ -140,11 +141,6 @@ export function ThemeProvider({ children, defaultMode = "system" }: ThemeProvide
   const effectiveId = previewId ?? themeId;
   const lastEditorPairRef = useRef<string | null>(null);
   useEffect(() => {
-    if (effectiveId === DEFAULT_THEME_ID) {
-      clearTheme();
-      if (!previewId) lastEditorPairRef.current = null;
-      return;
-    }
     const theme = resolveTheme(effectiveId, customThemes);
     applyTheme(theme, resolvedMode);
     if (previewId) return;
@@ -182,11 +178,12 @@ export function ThemeProvider({ children, defaultMode = "system" }: ThemeProvide
       resolvedMode,
       themeId,
       customThemes,
+      resolvedTheme: resolveTheme(previewId ?? themeId, customThemes),
       setMode,
       setThemeId,
       previewThemeId,
     }),
-    [mode, resolvedMode, themeId, customThemes, setMode, setThemeId, previewThemeId],
+    [mode, resolvedMode, themeId, previewId, customThemes, setMode, setThemeId, previewThemeId],
   );
 
   return (
