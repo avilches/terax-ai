@@ -5,25 +5,19 @@ use std::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// All values are in LOGICAL pixels so they map directly to
-/// `WebviewWindowBuilder::inner_size` and `WebviewWindowBuilder::position`.
+/// Size in PHYSICAL pixels (from `inner_size()`). Position is intentionally not
+/// persisted — reliable cross-monitor restore of position on macOS is unsolved.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowGeometry {
-    pub x: f64,
-    pub y: f64,
-    pub width: f64,
-    pub height: f64,
+    pub width: u32,
+    pub height: u32,
     pub maximized: bool,
-    /// OS name of the monitor this window was on (e.g. "Built-in Retina Display").
-    /// Used on restore to detect disconnected monitors and fall back to primary.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub monitor: Option<String>,
 }
 
 impl Default for WindowGeometry {
     fn default() -> Self {
-        Self { x: 0.0, y: 0.0, width: 1280.0, height: 800.0, maximized: false, monitor: None }
+        Self { width: 1280, height: 800, maximized: false }
     }
 }
 
@@ -148,19 +142,10 @@ impl WindowStateManager {
         }
     }
 
-    pub fn update_geometry(
-        &self,
-        label: &str,
-        x: f64,
-        y: f64,
-        width: f64,
-        height: f64,
-        maximized: bool,
-        monitor: Option<String>,
-    ) {
+    pub fn update_geometry(&self, label: &str, width: u32, height: u32, maximized: bool) {
         let mut state = self.inner.write().expect("window state lock poisoned");
         if let Some(entry) = state.windows.get_mut(label) {
-            entry.geometry = WindowGeometry { x, y, width, height, maximized, monitor };
+            entry.geometry = WindowGeometry { width, height, maximized };
         }
     }
 }
@@ -240,12 +225,10 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let mgr = WindowStateManager::new(dir.path().join("state.json"));
         mgr.add_window("w-aabbccdd".to_string());
-        mgr.update_geometry("w-aabbccdd", 100.0, 200.0, 1280.0, 800.0, false, None);
+        mgr.update_geometry("w-aabbccdd", 1280, 800, false);
         let entry = mgr.get_entry("w-aabbccdd").unwrap();
-        assert_eq!(entry.geometry.x, 100.0);
-        assert_eq!(entry.geometry.y, 200.0);
-        assert_eq!(entry.geometry.width, 1280.0);
-        assert_eq!(entry.geometry.height, 800.0);
+        assert_eq!(entry.geometry.width, 1280);
+        assert_eq!(entry.geometry.height, 800);
         assert!(!entry.geometry.maximized);
     }
 
@@ -253,7 +236,7 @@ mod tests {
     fn update_geometry_on_unknown_label_is_noop() {
         let dir = TempDir::new().unwrap();
         let mgr = WindowStateManager::new(dir.path().join("state.json"));
-        mgr.update_geometry("w-ghost", 0.0, 0.0, 100.0, 100.0, false, None);
+        mgr.update_geometry("w-ghost", 100, 100, false);
         assert!(mgr.get_entry("w-ghost").is_none());
     }
 }

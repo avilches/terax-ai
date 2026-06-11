@@ -1,11 +1,8 @@
 pub mod modules;
 
 use modules::{agent, fs, git, history, pty, shell, window_state, workspace};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
-#[cfg(target_os = "macos")]
-use tauri::PhysicalPosition;
 
 /// Drained on first read so HMR / re-mounts can't replay the launch dir.
 #[derive(Default)]
@@ -38,8 +35,8 @@ fn create_app_window(
     entry: Option<&window_state::WindowEntry>,
 ) -> Result<(), String> {
     let geo = entry.map(|e| &e.geometry);
-    let width = geo.map(|g| g.width).unwrap_or(1280.0);
-    let height = geo.map(|g| g.height).unwrap_or(800.0);
+    let width = geo.map(|g| g.width as f64).unwrap_or(1280.0);
+    let height = geo.map(|g| g.height as f64).unwrap_or(800.0);
     let ws_count = entry
         .and_then(|e| e.workspaces.as_array())
         .map(|a| a.len())
@@ -77,72 +74,29 @@ fn create_app_window(
     // When the last window closes (app quit), keep the state so it restores next launch.
     let app_handle = app.clone();
     let win_label = label.clone();
-    // Flag: geometry has been applied on first focus (only once per window lifetime).
-    let geo_applied = Arc::new(AtomicBool::new(false));
-    let geo_applied_clone = geo_applied.clone();
     window.on_window_event(move |event| match event {
-        WindowEvent::Focused(true) => {
+        // Save size on focus and resize. Position is intentionally not persisted —
+        // reliable cross-monitor restore on macOS is unsolved (see WORKSPACES_GOTCHAS.md).
+        WindowEvent::Focused(true) | WindowEvent::Resized(_) => {
             let mgr = app_handle.state::<window_state::WindowStateManager>();
-            // Apply saved geometry on the FIRST focus event. macOS cascade has finished
-            // positioning the window by this point, so set_position/set_size are respected.
-            if !geo_applied_clone.swap(true, Ordering::Relaxed) {
-                if let Some(entry) = mgr.get_entry(&win_label) {
-                    let g = &entry.geometry;
-                    if let Some(w) = app_handle.get_webview_window(&win_label) {
-                        let monitor_ok = g.monitor.as_deref().map_or(true, |saved| {
-                            app_handle.available_monitors()
-                                .ok()
-                                .map(|ms| ms.iter().any(|m| m.name().map_or(false, |n| n == saved)))
-                                .unwrap_or(true)
-                        });
-                        if g.maximized {
-                            let _ = w.maximize();
-                        } else {
-                            let _ = w.set_size(tauri::LogicalSize::new(g.width, g.height));
-                            if (g.x != 0.0 || g.y != 0.0) && monitor_ok {
-                                let _ = w.set_position(tauri::LogicalPosition::new(g.x, g.y));
-                                log::info!("[window] geometry applied for {win_label}: pos=({},{}) size={}x{}", g.x, g.y, g.width, g.height);
-                            } else if !monitor_ok {
-                                log::info!("[window] monitor {:?} not found, skipping position restore", g.monitor);
-                            }
-                        }
-                    }
+            if matches!(event, WindowEvent::Focused(true)) {
+                mgr.set_focused_window(&win_label);
+            }
+            if let Some(w) = app_handle.get_webview_window(&win_label) {
+                let maximized = w.is_maximized().unwrap_or(false);
+                if let Ok(size) = w.inner_size() {
+                    mgr.update_geometry(&win_label, size.width, size.height, maximized);
                 }
             }
-            mgr.set_focused_window(&win_label);
             mgr.save();
         }
         WindowEvent::CloseRequested { .. } => {
             let mgr = app_handle.state::<window_state::WindowStateManager>();
             if let Some(w) = app_handle.get_webview_window(&win_label) {
-                // scale_factor uses unwrap_or so a failure there doesn't prevent saving pos/size.
-                let scale = w.scale_factor().unwrap_or(1.0);
                 let maximized = w.is_maximized().unwrap_or(false);
-                match (w.outer_position(), w.inner_size()) {
-                  (Ok(pos), Ok(inner)) => {
-                    let logical_size = inner.to_logical::<f64>(scale);
-                    let logical_pos = pos.to_logical::<f64>(scale);
-                    let monitor = w.current_monitor()
-                        .ok()
-                        .flatten()
-                        .and_then(|m| m.name().map(|n| n.to_string()));
-                    log::info!(
-                        "[window] saving geometry for {win_label}: pos=({},{}) size={}x{} maximized={maximized}",
-                        logical_pos.x, logical_pos.y, logical_size.width, logical_size.height
-                    );
-                    mgr.update_geometry(
-                        &win_label,
-                        logical_pos.x,
-                        logical_pos.y,
-                        logical_size.width,
-                        logical_size.height,
-                        maximized,
-                        monitor,
-                    );
+                if let Ok(size) = w.inner_size() {
+                    mgr.update_geometry(&win_label, size.width, size.height, maximized);
                     mgr.save();
-                  }
-                  (Err(e), _) => log::warn!("[window] CloseRequested: outer_position() failed for {win_label}: {e}"),
-                  (_, Err(e)) => log::warn!("[window] CloseRequested: inner_size() failed for {win_label}: {e}"),
                 }
             }
         }
@@ -244,7 +198,7 @@ async fn open_settings_window(app: tauri::AppHandle, tab: Option<String>) -> Res
                     + ((main_size.width as i32).saturating_sub(settings_size.width as i32)) / 2;
                 let y = main_pos.y
                     + ((main_size.height as i32).saturating_sub(settings_size.height as i32)) / 2;
-                let _ = window.set_position(PhysicalPosition::new(x, y));
+                let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
             } else {
                 let _ = window.center();
             }
@@ -293,6 +247,23 @@ fn window_save_workspace_state(
     let mgr = app.state::<window_state::WindowStateManager>();
     mgr.update_workspace(&label, workspaces, active_index);
     mgr.save();
+}
+
+/// Called from main.tsx on startup (on_window_ready equivalent) to restore window size.
+/// Uses physical pixels from inner_size(), matching tauri-plugin-window-state behaviour.
+/// Position is not restored — see WORKSPACES_GOTCHAS.md for why.
+#[tauri::command]
+fn restore_window_geometry(webview_window: tauri::WebviewWindow, app: tauri::AppHandle) {
+    let label = webview_window.label().to_string();
+    let mgr = app.state::<window_state::WindowStateManager>();
+    let Some(entry) = mgr.get_entry(&label) else { return };
+    let g = &entry.geometry;
+    log::info!("[window] restore size for {label}: {}x{} maximized={}", g.width, g.height, g.maximized);
+    if g.maximized {
+        let _ = webview_window.maximize();
+    } else if g.width > 0 && g.height > 0 {
+        let _ = webview_window.set_size(tauri::PhysicalSize::new(g.width, g.height));
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -435,6 +406,7 @@ pub fn run() {
             open_main_window,
             window_get_state,
             window_save_workspace_state,
+            restore_window_geometry,
             agent::agent_enable_claude_hooks,
             agent::agent_claude_hooks_status,
             history::history_suggest,

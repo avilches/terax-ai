@@ -29,8 +29,10 @@ its own extra fields (e.g., `cwd`, `runningCommand`, `dirty`).
 
 State is persisted per-window to `workspaces.json` via the `window_save_workspace_state` IPC
 command, debounced 800ms on every mutation. Each window reads its own saved state on mount via
-`window_get_state`. The workspace sidebar (52px, left edge) lists workspaces; clicking switches
-`activeWorkspaceId`.
+`window_get_state`. Window size is restored via `restore_window_geometry` IPC called from
+`main.tsx` before `show()`. Window position is not restored (see
+[WORKSPACES_GOTCHAS.md](WORKSPACES_GOTCHAS.md)). The workspace sidebar (52px, left edge) lists
+workspaces; clicking switches `activeWorkspaceId`.
 
 ---
 
