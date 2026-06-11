@@ -1,25 +1,37 @@
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable, useDndMonitor } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { panelIcon, panelTitle } from "./lib/panelTitle";
 import type { Panel } from "./lib/types";
 import { usePreferencesStore } from "@/modules/settings/preferences";
-import { useRef } from "react";
+import { Fragment, useRef, useState } from "react";
 
 type Props = {
   panels: Panel[];
   activePanelId: string | null;
   paneFocused: boolean;
   workspaceId: string;
+  isDragging: boolean;
   onActivate: (panelId: string) => void;
   onClose: (panelId: string) => void;
   onNewTerminal: () => void;
 };
+
+function InsertionGap({ show }: { show: boolean }) {
+  return (
+    <div className="relative w-0 shrink-0">
+      {show && (
+        <div className="pointer-events-none absolute inset-y-1 -left-px z-10 w-0.5 rounded-full bg-primary" />
+      )}
+    </div>
+  );
+}
 
 function DraggableTab({
   panel,
   activePanelId,
   paneFocused,
   workspaceId,
+  isDragging,
   onActivate,
   onClose,
 }: {
@@ -27,10 +39,19 @@ function DraggableTab({
   activePanelId: string | null;
   paneFocused: boolean;
   workspaceId: string;
+  isDragging: boolean;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: panel.id });
+  const { attributes, listeners, setNodeRef, isDragging: isThisDragging } = useDraggable({ id: panel.id });
+  const { setNodeRef: setBeforeRef } = useDroppable({
+    id: `tab-insert:${panel.id}:before`,
+    disabled: !isDragging,
+  });
+  const { setNodeRef: setAfterRef } = useDroppable({
+    id: `tab-insert:${panel.id}:after`,
+    disabled: !isDragging,
+  });
   const active = panel.id === activePanelId;
   const title = panelTitle(panel);
   const tabBarStyle = usePreferencesStore((s) => s.tabBarStyle);
@@ -58,9 +79,13 @@ function DraggableTab({
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             ],
-        isDragging && "opacity-40",
+        isThisDragging && "opacity-40",
       )}
     >
+      {/* Droppable half-zones — registered but only active when a drag is in progress */}
+      <div ref={setBeforeRef} className="absolute inset-y-0 left-0 w-1/2" />
+      <div ref={setAfterRef} className="absolute inset-y-0 right-0 w-1/2" />
+
       {active && paneFocused && (
         <div className={cn("absolute inset-x-0 top-0 bg-primary", connected ? "h-[1.5px]" : "h-0.5 rounded-t")} />
       )}
@@ -99,8 +124,28 @@ function DraggableTab({
   );
 }
 
-export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, onActivate, onClose, onNewTerminal }: Props) {
+export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, isDragging, onActivate, onClose, onNewTerminal }: Props) {
   const tabBarStyle = usePreferencesStore((s) => s.tabBarStyle);
+  const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
+
+  useDndMonitor({
+    onDragOver(event) {
+      const overId = event.over?.id ? String(event.over.id) : null;
+      if (!overId?.startsWith("tab-insert:")) {
+        setInsertionIndex(null);
+        return;
+      }
+      const parts = overId.split(":");
+      const refPanelId = parts[1];
+      const side = parts[2];
+      if (!refPanelId || !side) { setInsertionIndex(null); return; }
+      const idx = panels.findIndex((p) => p.id === refPanelId);
+      if (idx === -1) { setInsertionIndex(null); return; }
+      setInsertionIndex(side === "before" ? idx : idx + 1);
+    },
+    onDragEnd() { setInsertionIndex(null); },
+    onDragCancel() { setInsertionIndex(null); },
+  });
 
   // react-resizable-panels registers a document-level capture pointerdown listener
   // that calls preventDefault() when the pointer is within ~5px of a resize handle.
@@ -136,17 +181,21 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, on
         if (dx < 6 && dy < 6) onActivate(panelId);
       }}
     >
-      {panels.map((p) => (
-        <DraggableTab
-          key={p.id}
-          panel={p}
-          activePanelId={activePanelId}
-          paneFocused={paneFocused}
-          workspaceId={workspaceId}
-          onActivate={onActivate}
-          onClose={onClose}
-        />
+      {panels.map((p, i) => (
+        <Fragment key={p.id}>
+          <InsertionGap show={insertionIndex === i} />
+          <DraggableTab
+            panel={p}
+            activePanelId={activePanelId}
+            paneFocused={paneFocused}
+            workspaceId={workspaceId}
+            isDragging={isDragging}
+            onActivate={onActivate}
+            onClose={onClose}
+          />
+        </Fragment>
       ))}
+      <InsertionGap show={insertionIndex === panels.length} />
       <button
         type="button"
         onClick={onNewTerminal}
