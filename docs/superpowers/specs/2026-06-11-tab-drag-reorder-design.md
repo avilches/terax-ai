@@ -59,8 +59,8 @@ A new branch handles `overId.startsWith("tab-insert:")`:
 3. Find the target pane: the pane that contains `refPanelId`.
 4. Verify both panes belong to the same workspace (same guard as today).
 5. Compute `insertionIndex = panels.indexOf(refPanelId) + (side === "after" ? 1 : 0)`.
-6. If same pane: call `reorderPanel(workspaceId, panelId, insertionIndex)`.
-7. If different pane: call `movePanel(workspaceId, panelId, targetPaneId, insertionIndex)`.
+6. If same pane: call `reorderPanel(workspaceId, panelId, insertionIndex)`. `reorderPanel` receives the raw index computed against the current panel array (before removal); `arrayMove` handles the adjustment internally.
+7. If different pane: call `movePanel(workspaceId, panelId, targetPaneId, insertionIndex)`. The index is computed against the target pane's current panel array (before insertion), so `movePanelBetweenPanes` receives it directly.
 
 ---
 
