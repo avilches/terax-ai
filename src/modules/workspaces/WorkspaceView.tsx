@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { panelIcon, panelTitle } from "./lib/panelTitle";
 
 import { allPanes, findPanelPane } from "./lib/splitNode";
+import { usePreferencesStore } from "@/modules/settings/preferences";
 import type { Panel, Workspace } from "./lib/types";
 import type { UseWorkspacesReturn } from "./lib/useWorkspaces";
 import { SplitNodeView } from "./SplitNodeView";
@@ -122,6 +123,9 @@ export function WorkspaceView({
       if (sourcePaneId === targetPaneId) return;
       onMovePanel(sourceWorkspaceId, panelId, targetPaneId);
     } else {
+      const { workspacePaneLimit } = usePreferencesStore.getState();
+      const ws = workspaces.find((w) => w.id === sourceWorkspaceId);
+      if (ws && allPanes(ws.paneTree).length >= workspacePaneLimit) return;
       onSplitPaneAndPlace(sourceWorkspaceId, targetPaneId, zone, panelId);
     }
   }

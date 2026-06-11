@@ -86,7 +86,7 @@ There are two separate WebView windows: the main window (`index.html`) and the s
 
 Supported shells: zsh (full), bash (full), fish (full), PowerShell 7+ (full), PowerShell 5.1 (full), cmd.exe (no integration — basic terminal only).
 
-**Split panes.** Terminals can be split horizontally and vertically within a pane. Each panel is an independent PTY. Splitting a pane creates a second pane alongside it; each pane has its own panel tab strip. Splitting is blocked when the pane is narrower than 250 px (for horizontal splits) or shorter than 250 px (for vertical splits) — both the keyboard shortcuts and the drag-and-drop zones respect this limit.
+**Split panes.** Terminals can be split horizontally and vertically within a pane. Each panel is an independent PTY. Splitting a pane creates a second pane alongside it; each pane has its own panel tab strip. Two limits apply, both configurable in `terax-settings.json`: `paneSplitLimit` (default `{ width: 250, height: 250 }`) blocks horizontal splits when the pane is too narrow and vertical splits when it is too short; `workspacePaneLimit` (default `8`) caps the total number of panes per workspace. Both keyboard shortcuts and drag-and-drop zones enforce these limits.
 
 **Inline search.** `Cmd+F` / `Ctrl+F` opens an inline search bar that searches the xterm.js buffer. Matches are highlighted in the viewport and you can jump between them.
 

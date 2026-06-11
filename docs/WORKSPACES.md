@@ -27,7 +27,7 @@ A `Panel` is a tagged union on `kind`: `terminal` | `editor` | `preview` | `mark
 `git-diff` | `git-history` | `git-commit-file`. All kinds share `id`, `title`; each kind carries
 its own extra fields (e.g., `cwd`, `runningCommand`, `dirty`).
 
-State is persisted per-window to `terax-windows.json` via the `window_save_workspace_state` IPC
+State is persisted per-window to `workspaces.json` via the `window_save_workspace_state` IPC
 command, debounced 800ms on every mutation. Each window reads its own saved state on mount via
 `window_get_state`. The workspace sidebar (52px, left edge) lists workspaces; clicking switches
 `activeWorkspaceId`.
@@ -196,15 +196,21 @@ Tab drag-and-drop uses `@dnd-kit/core` v6.3.1 (`DndContext` in `WorkspaceView`).
   `activationConstraint: { distance: 6 }`. Requires `touch-action: none` (`touch-none` class) to
   prevent WebKit from claiming the initial pointer movement as a scroll gesture and issuing
   `pointercancel` before the 6px threshold is reached.
-- `DropZone` (`PaneView.tsx`): `useDroppable` per zone. Each pane renders drop zones only during
-  an active drag, but the number of zones depends on the target pane state:
-  - **1 panel** or **pane smaller than `MIN_PANE_SPLIT_PX` (250 px) in any dimension**: only the
-    `center` zone is registered, covering the full pane (`inset-0`). Splitting is not offered.
-  - **2+ panels and large enough**: the full 5-zone layout (top, bottom, left, right, center).
-  Each zone is two separate divs: an invisible hit area (same geometry as before) and a larger
-  visual highlight (`pointer-events-none`) that covers the half of the pane in the split direction
+- `DropZone` (`PaneView.tsx`): `useDroppable` per zone. Zones are rendered only during an active
+  drag. The set of zones depends on the target pane's pixel dimensions, read from a `ResizeObserver`
+  and compared against `paneSplitLimit` (configurable in `terax-settings.json`, default
+  `{ width: 250, height: 250 }`):
+  - **width < limit AND height < limit**: only `center`, covering the full pane (`inset-0`).
+  - **width < limit only**: `top`, `bottom`, `center` — horizontal splits disabled.
+  - **height < limit only**: `left`, `right`, `center` — vertical splits disabled.
+  - **both within limit**: full 5-zone layout (top, bottom, left, right, center).
+  In all cases `center` expands its hit area to fill any gap left by absent directional zones.
+  Each zone is two separate divs: an invisible hit area and a larger visual highlight
+  (`pointer-events-none`) that covers the half of the pane in the split direction
   (top/bottom → top or bottom half; left/right → left or right half; center → full pane with
   `rounded-md`).
+  Drag-drop splits are also blocked when the workspace already has `workspacePaneLimit` panes
+  (configurable in `terax-settings.json`, default `8`).
 - `DragOverlay`: lightweight floating chip showing panel icon + title during drag. `dropAnimation:
   null` to avoid fighting the layout reflow on drop.
 

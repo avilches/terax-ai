@@ -19,6 +19,9 @@ use session::Session;
 
 pub struct PtyState {
     sessions: RwLock<HashMap<u32, Arc<Session>>>,
+    // Maps window label → set of PTY ids owned by that window.
+    // Used by pty_close_all to only reap sessions belonging to the caller window.
+    window_sessions: RwLock<HashMap<String, Vec<u32>>>,
     // Starts at 1 so freshly-handed-out ids are never 0, which the frontend
     // sometimes treats as "unset". Increments monotonically; never reused.
     next_id: AtomicU32,
@@ -28,6 +31,7 @@ impl Default for PtyState {
     fn default() -> Self {
         Self {
             sessions: RwLock::new(HashMap::new()),
+            window_sessions: RwLock::new(HashMap::new()),
             next_id: AtomicU32::new(1),
         }
     }
@@ -37,6 +41,7 @@ impl Default for PtyState {
 #[allow(clippy::too_many_arguments)]
 pub async fn pty_open(
     app: tauri::AppHandle,
+    webview_window: tauri::WebviewWindow,
     state: tauri::State<'_, PtyState>,
     registry: tauri::State<'_, WorkspaceRegistry>,
     cols: u16,
@@ -47,6 +52,7 @@ pub async fn pty_open(
     on_data: Channel<Response>,
     on_exit: Channel<i32>,
 ) -> Result<u32, String> {
+    let window_label = webview_window.label().to_string();
     let workspace = WorkspaceEnv::from_option(workspace);
     let blocks = blocks.unwrap_or(false);
     authorize_user_spawn_cwd(&registry, cwd.as_deref(), &workspace).map_err(|e| {
@@ -68,7 +74,11 @@ pub async fn pty_open(
         e
     })?;
     state.sessions.write().unwrap().insert(id, session);
-    log::info!("pty opened id={id} cols={cols} rows={rows}");
+    state.window_sessions.write().unwrap()
+        .entry(window_label.clone())
+        .or_default()
+        .push(id);
+    log::info!("pty opened id={id} cols={cols} rows={rows} window={window_label}");
     Ok(id)
 }
 
@@ -135,6 +145,9 @@ pub fn pty_resize(
 
 #[tauri::command]
 pub fn pty_close(state: tauri::State<PtyState>, id: u32) -> Result<(), String> {
+    state.window_sessions.write().unwrap()
+        .values_mut()
+        .for_each(|ids| ids.retain(|&i| i != id));
     let session = state.sessions.write().unwrap().remove(&id);
     if let Some(s) = session {
         if let Err(e) = s.killer.lock().unwrap().kill() {
@@ -220,14 +233,23 @@ fn shell_has_children(shell_pid: u32) -> bool {
 
 // A fresh webview load orphans the previous frontend's sessions in this still
 // running process; reap them on boot before any new tab spawns.
+// Only closes sessions that belong to the calling window so that other open
+// windows are not affected.
 #[tauri::command]
-pub fn pty_close_all(state: tauri::State<PtyState>) -> Result<usize, String> {
-    let drained: Vec<(u32, Arc<Session>)> = {
-        let mut sessions = state.sessions.write().unwrap();
-        sessions.drain().collect()
+pub fn pty_close_all(
+    webview_window: tauri::WebviewWindow,
+    state: tauri::State<PtyState>,
+) -> Result<usize, String> {
+    let window_label = webview_window.label().to_string();
+    let ids: Vec<u32> = state.window_sessions.write().unwrap()
+        .remove(&window_label)
+        .unwrap_or_default();
+    let sessions: Vec<(u32, Arc<Session>)> = {
+        let mut all = state.sessions.write().unwrap();
+        ids.iter().filter_map(|id| all.remove(id).map(|s| (*id, s))).collect()
     };
-    let count = drained.len();
-    for (id, s) in drained {
+    let count = sessions.len();
+    for (id, s) in sessions {
         if let Err(e) = s.killer.lock().unwrap().kill() {
             log::debug!("pty_close_all: kill id={id} returned {e}");
         }
@@ -237,7 +259,7 @@ pub fn pty_close_all(state: tauri::State<PtyState>) -> Result<usize, String> {
             .expect("spawn pty drop thread");
     }
     if count > 0 {
-        log::info!("pty_close_all: reaped {count} orphaned session(s)");
+        log::info!("pty_close_all: reaped {count} orphaned session(s) for window={window_label}");
     }
     Ok(count)
 }

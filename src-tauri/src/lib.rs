@@ -1,7 +1,8 @@
 pub mod modules;
 
 use modules::{agent, fs, git, history, pty, shell, window_state, workspace};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 #[cfg(target_os = "macos")]
 use tauri::PhysicalPosition;
@@ -36,10 +37,19 @@ fn create_app_window(
     label: String,
     entry: Option<&window_state::WindowEntry>,
 ) -> Result<(), String> {
-    let (width, height) = entry
-        .map(|e| (e.geometry.width as f64, e.geometry.height as f64))
-        .unwrap_or((1280.0, 800.0));
+    let geo = entry.map(|e| &e.geometry);
+    let width = geo.map(|g| g.width).unwrap_or(1280.0);
+    let height = geo.map(|g| g.height).unwrap_or(800.0);
+    let ws_count = entry
+        .and_then(|e| e.workspaces.as_array())
+        .map(|a| a.len())
+        .unwrap_or(0);
+    log::info!(
+        "[window] create_app_window: label={label} size={width}x{height} workspaces={ws_count}"
+    );
 
+    // Size only in the builder — position is applied on first Focused(true) to work
+    // around macOS cascade which overrides any position set before or at show().
     let builder =
         WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
             .title("Terax")
@@ -63,44 +73,97 @@ fn create_app_window(
         let _ = window.set_decorations(false);
     }
 
-    if let Some(e) = entry {
-        if e.geometry.x != 0 || e.geometry.y != 0 {
-            let _ = window.set_position(tauri::PhysicalPosition::new(
-                e.geometry.x,
-                e.geometry.y,
-            ));
-        }
-        if e.geometry.maximized {
-            let _ = window.maximize();
-        }
-    }
-
-    // Save geometry + remove from state on close; close settings when last window.
+    // Save geometry on close; remove from state only if other windows remain open.
+    // When the last window closes (app quit), keep the state so it restores next launch.
     let app_handle = app.clone();
     let win_label = label.clone();
+    // Flag: geometry has been applied on first focus (only once per window lifetime).
+    let geo_applied = Arc::new(AtomicBool::new(false));
+    let geo_applied_clone = geo_applied.clone();
     window.on_window_event(move |event| match event {
+        WindowEvent::Focused(true) => {
+            let mgr = app_handle.state::<window_state::WindowStateManager>();
+            // Apply saved geometry on the FIRST focus event. macOS cascade has finished
+            // positioning the window by this point, so set_position/set_size are respected.
+            if !geo_applied_clone.swap(true, Ordering::Relaxed) {
+                if let Some(entry) = mgr.get_entry(&win_label) {
+                    let g = &entry.geometry;
+                    if let Some(w) = app_handle.get_webview_window(&win_label) {
+                        let monitor_ok = g.monitor.as_deref().map_or(true, |saved| {
+                            app_handle.available_monitors()
+                                .ok()
+                                .map(|ms| ms.iter().any(|m| m.name().map_or(false, |n| n == saved)))
+                                .unwrap_or(true)
+                        });
+                        if g.maximized {
+                            let _ = w.maximize();
+                        } else {
+                            let _ = w.set_size(tauri::LogicalSize::new(g.width, g.height));
+                            if (g.x != 0.0 || g.y != 0.0) && monitor_ok {
+                                let _ = w.set_position(tauri::LogicalPosition::new(g.x, g.y));
+                                log::info!("[window] geometry applied for {win_label}: pos=({},{}) size={}x{}", g.x, g.y, g.width, g.height);
+                            } else if !monitor_ok {
+                                log::info!("[window] monitor {:?} not found, skipping position restore", g.monitor);
+                            }
+                        }
+                    }
+                }
+            }
+            mgr.set_focused_window(&win_label);
+            mgr.save();
+        }
         WindowEvent::CloseRequested { .. } => {
             let mgr = app_handle.state::<window_state::WindowStateManager>();
             if let Some(w) = app_handle.get_webview_window(&win_label) {
-                if let (Ok(pos), Ok(size)) = (w.outer_position(), w.outer_size()) {
-                    let maximized = w.is_maximized().unwrap_or(false);
+                // scale_factor uses unwrap_or so a failure there doesn't prevent saving pos/size.
+                let scale = w.scale_factor().unwrap_or(1.0);
+                let maximized = w.is_maximized().unwrap_or(false);
+                match (w.outer_position(), w.inner_size()) {
+                  (Ok(pos), Ok(inner)) => {
+                    let logical_size = inner.to_logical::<f64>(scale);
+                    let logical_pos = pos.to_logical::<f64>(scale);
+                    let monitor = w.current_monitor()
+                        .ok()
+                        .flatten()
+                        .and_then(|m| m.name().map(|n| n.to_string()));
+                    log::info!(
+                        "[window] saving geometry for {win_label}: pos=({},{}) size={}x{} maximized={maximized}",
+                        logical_pos.x, logical_pos.y, logical_size.width, logical_size.height
+                    );
                     mgr.update_geometry(
                         &win_label,
-                        pos.x,
-                        pos.y,
-                        size.width,
-                        size.height,
+                        logical_pos.x,
+                        logical_pos.y,
+                        logical_size.width,
+                        logical_size.height,
                         maximized,
+                        monitor,
                     );
                     mgr.save();
+                  }
+                  (Err(e), _) => log::warn!("[window] CloseRequested: outer_position() failed for {win_label}: {e}"),
+                  (_, Err(e)) => log::warn!("[window] CloseRequested: inner_size() failed for {win_label}: {e}"),
                 }
             }
         }
         WindowEvent::Destroyed => {
+            // Count live main windows after this one is gone.
+            let live = app_handle
+                .webview_windows()
+                .into_keys()
+                .filter(|l| l.starts_with("w-"))
+                .count();
             let mgr = app_handle.state::<window_state::WindowStateManager>();
-            mgr.remove_window(&win_label);
-            mgr.save();
-            if mgr.window_order().is_empty() {
+            if live > 0 {
+                // User closed one window while others are open — remove from state.
+                log::info!("[window] Destroyed {win_label}: {live} window(s) remain, removing from state");
+                mgr.remove_window(&win_label);
+                mgr.save();
+            } else {
+                // Last window closed (app quit) — keep state to restore next launch.
+                log::info!("[window] Destroyed {win_label}: last window, keeping state for restore");
+            }
+            if live == 0 {
                 if let Some(s) = app_handle.get_webview_window("settings") {
                     let _ = s.close();
                 }
@@ -209,7 +272,15 @@ fn window_get_state(
     app: tauri::AppHandle,
     label: String,
 ) -> Option<window_state::WindowEntry> {
-    app.state::<window_state::WindowStateManager>().get_entry(&label)
+    let entry = app.state::<window_state::WindowStateManager>().get_entry(&label);
+    match &entry {
+        Some(e) => {
+            let ws = e.workspaces.as_array().map(|a| a.len()).unwrap_or(0);
+            log::info!("[window] window_get_state: label={label} → found ({ws} workspace(s))");
+        }
+        None => log::warn!("[window] window_get_state: label={label} → NOT FOUND in state"),
+    }
+    entry
 }
 
 #[tauri::command]
@@ -247,7 +318,7 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .map_err(|e| std::io::Error::other(e.to_string()))?;
-            let state_path = data_dir.join("terax-windows.json");
+            let state_path = data_dir.join("workspaces.json");
             let mgr = window_state::WindowStateManager::new(state_path);
             mgr.load();
             let order = mgr.window_order();
@@ -262,6 +333,9 @@ pub fn run() {
                 create_app_window(&handle, id, None)
                     .map_err(std::io::Error::other)?;
             } else {
+                let focused_label = handle
+                    .state::<window_state::WindowStateManager>()
+                    .get_focused_window();
                 let entries: Vec<_> = {
                     let m = handle.state::<window_state::WindowStateManager>();
                     order.iter().map(|id| (id.clone(), m.get_entry(id))).collect()
@@ -270,6 +344,19 @@ pub fn run() {
                     if let Err(e) = create_app_window(&handle, id.clone(), entry.as_ref()) {
                         eprintln!("terax: failed to restore window {id}: {e}");
                     }
+                }
+                // Re-focus the window that had focus when the app last closed.
+                // create_app_window calls set_focus() on each window, so without
+                // this the last-created window would have focus instead.
+                let target = focused_label
+                    .as_deref()
+                    .and_then(|l| handle.get_webview_window(l))
+                    .or_else(|| {
+                        // Fallback: focus the first window in order.
+                        order.first().and_then(|l| handle.get_webview_window(l))
+                    });
+                if let Some(w) = target {
+                    let _ = w.set_focus();
                 }
             }
             Ok(())

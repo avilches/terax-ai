@@ -138,6 +138,73 @@ inactivos ídem desde el fix anterior.
 
 ---
 
+---
+
+## Bug 4: geometría de ventana (posición/tamaño) no se guarda ni restaura (EN CURSO)
+
+### Síntoma
+
+Al cerrar y reabrir la app, las ventanas aparecen siempre en posición y tamaño por defecto
+(1280×800, posición aleatoria por macOS). El JSON `workspaces.json` siempre muestra `x:0, y:0,
+width:1280, height:800`.
+
+### Causa 1 — save: `if let` triple falla silenciosamente
+
+El handler `CloseRequested` usaba:
+
+```rust
+if let (Ok(pos), Ok(inner), Ok(scale)) =
+    (w.outer_position(), w.inner_size(), w.scale_factor())
+```
+
+Si cualquiera de los tres falla (en particular `scale_factor()` que puede fallar si el WebKit
+ya está parcialmente desmontado), el bloque completo se salta y la geometría nunca se actualiza.
+La entrada en el JSON queda con los valores por defecto (0, 0, 1280, 800).
+
+**Fix**: separar las llamadas y usar `unwrap_or(1.0)` para `scale_factor()` de modo que un fallo
+en ella no impida guardar posición y tamaño.
+
+### Causa 2 — save: unidades mezcladas (físico vs lógico)
+
+`outer_position()` e `inner_size()` devuelven **pixels físicos**. El builder
+`WebviewWindowBuilder::inner_size(f64, f64)` y `.position(f64, f64)` esperan **pixels lógicos**.
+En pantallas Retina (scale_factor=2), guardar físico (2560×1600) y restaurar como lógico produce
+una ventana de 5120×3200 lógicos (doble de la pantalla).
+
+**Fix**: convertir siempre a lógico al guardar: `pos.to_logical(scale)` y `inner.to_logical(scale)`.
+
+### Causa 3 — restore: macOS "cascade" ignora posición pre-show
+
+macOS aplica posicionamiento automático (cascade) cuando una ventana se muestra por primera vez.
+Cualquier posición establecida antes de `show()` — ya sea en el builder (`.position()`) o
+mediante `set_position()` en un estado oculto — puede ser sobreescrita por el OS.
+
+Establecer la posición justo después de `show()` (sincrónico) tampoco funciona de forma fiable
+porque AppKit procesa el `orderFront:` de forma asíncrona en el run loop de Cocoa.
+
+**Fix correcto**: escuchar `WindowEvent::Focused(true)` con un flag de "primer foco". Cuando la
+ventana recibe foco por primera vez, macOS ya ha terminado de posicionarla (cascade completado).
+Aplicar `set_size(LogicalSize)` y `set_position(LogicalPosition)` en ese momento garantiza que
+la geometría se establece sobre la ventana ya visible y estabilizada.
+
+### Intentos fallidos de restore
+
+- **`builder.position(x, y)` en el builder**: ignorado por macOS cascade al hacer `show()`.
+- **`set_position()` antes de `show()`**: el frame se aplica en ventana oculta pero macOS lo
+  descarta al hacer `orderFront:`.
+- **`set_position()` justo después de `show()` (síncrono)**: `show()` pone el `orderFront:` en
+  la cola del run loop de Cocoa; la llamada síncrona siguiente a `set_position()` llega antes de
+  que Cocoa procese el show, por lo que la posición se aplica en la ventana todavía oculta y
+  macOS la sobreescribe al mostrarla.
+
+### Nota sobre `tauri-plugin-window-state`
+
+El plugin oficial usaba `WindowEvent::Ready` (disponible en Tauri 1) para aplicar geometría
+después de que la ventana estuviera completamente inicializada. En Tauri 2 ese evento no existe.
+El equivalente más cercano es el primer `Focused(true)`.
+
+---
+
 ## Estado de archivos tras todos los fixes
 
 | Archivo | Cambio |

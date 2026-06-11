@@ -56,7 +56,6 @@ import {
   useWorkspaces,
   WorkspaceView,
 } from "@/modules/workspaces";
-import { MIN_PANE_SPLIT_PX } from "@/modules/workspaces/lib/constants";
 import type { SearchAddon } from "@xterm/addon-search";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -150,6 +149,7 @@ export default function App() {
     saveWorkspaceState(workspaces, activeIdx);
   }, [workspaces, activeWorkspaceId]);
 
+  // Focus the active terminal when the active workspace changes (tab/workspace switch).
   useEffect(() => {
     const ws = workspacesRef.current.find((w) => w.id === activeWorkspaceId);
     if (!ws) return;
@@ -161,6 +161,27 @@ export default function App() {
     });
     return () => cancelAnimationFrame(raf);
   }, [activeWorkspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-focus the active terminal when this window regains OS focus (e.g. Cmd+Tab back).
+  // Also fires on first window focus after startup, ensuring the terminal gets the
+  // cursor even if the PTY wasn't ready when the workspace-switch effect ran.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    getCurrentWindow()
+      .onFocusChanged(({ payload: focused }) => {
+        if (!focused) return;
+        const ws = workspacesRef.current.find((w) => w.id === activeWorkspaceId);
+        if (!ws) return;
+        const pane = findPane(ws.paneTree, ws.activePaneId);
+        if (!pane?.activePanelId) return;
+        requestAnimationFrame(() => {
+          terminalHandles.current.get(pane.activePanelId!)?.focus();
+        });
+      })
+      .then((u) => { unlisten = u; })
+      .catch(() => {});
+    return () => unlisten?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const init = usePreferencesStore((s) => s.init);
@@ -717,15 +738,19 @@ export default function App() {
       },
       "pane.splitRight": () => {
         if (!activeWorkspace) return;
+        const { paneSplitLimit, workspacePaneLimit } = usePreferencesStore.getState();
+        if (allPanes(activeWorkspace.paneTree).length >= workspacePaneLimit) return;
         const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
-        if (el && el.getBoundingClientRect().width < MIN_PANE_SPLIT_PX) return;
+        if (!el || el.getBoundingClientRect().width < paneSplitLimit.width) return;
         const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "horizontal");
         openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
       },
       "pane.splitDown": () => {
         if (!activeWorkspace) return;
+        const { paneSplitLimit, workspacePaneLimit } = usePreferencesStore.getState();
+        if (allPanes(activeWorkspace.paneTree).length >= workspacePaneLimit) return;
         const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
-        if (el && el.getBoundingClientRect().height < MIN_PANE_SPLIT_PX) return;
+        if (!el || el.getBoundingClientRect().height < paneSplitLimit.height) return;
         const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "vertical");
         openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
       },
@@ -851,15 +876,19 @@ export default function App() {
             closeActiveTabOrPane: handleCloseActivePanel,
             splitPaneRight: () => {
               if (!activeWorkspace) return;
+              const { paneSplitLimit, workspacePaneLimit } = usePreferencesStore.getState();
+              if (allPanes(activeWorkspace.paneTree).length >= workspacePaneLimit) return;
               const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
-              if (el && el.getBoundingClientRect().width < MIN_PANE_SPLIT_PX) return;
+              if (!el || el.getBoundingClientRect().width < paneSplitLimit.width) return;
               const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "horizontal");
               openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
             },
             splitPaneDown: () => {
               if (!activeWorkspace) return;
+              const { paneSplitLimit, workspacePaneLimit } = usePreferencesStore.getState();
+              if (allPanes(activeWorkspace.paneTree).length >= workspacePaneLimit) return;
               const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
-              if (el && el.getBoundingClientRect().height < MIN_PANE_SPLIT_PX) return;
+              if (!el || el.getBoundingClientRect().height < paneSplitLimit.height) return;
               const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "vertical");
               openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
             },

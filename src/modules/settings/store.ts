@@ -38,6 +38,8 @@ export const EDITOR_THEME_LABELS: Record<EditorThemeId, string> = {
   "xcode-light": "Xcode Light",
 };
 
+export type PaneSplitLimit = { width: number; height: number };
+
 export type Preferences = {
   theme: ThemePref;
   themeId: string;
@@ -67,6 +69,8 @@ export type Preferences = {
   rightPanelActiveTab: "explorer" | "git" | "history";
   rightPanelSide: "left" | "right";
   tabBarStyle: TabBarStyle;
+  workspacePaneLimit: number;
+  paneSplitLimit: PaneSplitLimit;
 };
 
 const STORE_PATH = "terax-settings.json";
@@ -99,6 +103,8 @@ const KEY_RIGHT_PANEL_WIDTH = "rightPanelWidth";
 const KEY_RIGHT_PANEL_ACTIVE_TAB = "rightPanelActiveTab";
 const KEY_RIGHT_PANEL_SIDE = "rightPanelSide";
 const KEY_TAB_BAR_STYLE = "tabBarStyle";
+const KEY_WORKSPACE_PANE_LIMIT = "workspacePaneLimit";
+const KEY_PANE_SPLIT_LIMIT = "paneSplitLimit";
 
 export const TERMINAL_FONT_SIZE_DEFAULT = 14;
 export const TERMINAL_FONT_SIZE_MIN = 8;
@@ -144,6 +150,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   rightPanelActiveTab: "explorer",
   rightPanelSide: "right",
   tabBarStyle: "connected",
+  workspacePaneLimit: 8,
+  paneSplitLimit: { width: 250, height: 250 },
 };
 
 const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: 200 });
@@ -166,7 +174,7 @@ export async function loadPreferences(): Promise<Preferences> {
   const entries = await store.entries();
   const map = new Map<string, unknown>(entries);
   const get = <T>(k: string): T | undefined => map.get(k) as T | undefined;
-  return {
+  const result: Preferences = {
     theme: get<ThemePref>(KEY_THEME) ?? DEFAULT_PREFERENCES.theme,
     themeId: get<string>(KEY_THEME_ID) ?? DEFAULT_PREFERENCES.themeId,
     backgroundKind:
@@ -244,7 +252,28 @@ export async function loadPreferences(): Promise<Preferences> {
       const v = get<string>(KEY_TAB_BAR_STYLE);
       return v === "connected" || v === "pill" ? v : DEFAULT_PREFERENCES.tabBarStyle;
     })(),
+    workspacePaneLimit: (() => {
+      const v = get<number>(KEY_WORKSPACE_PANE_LIMIT);
+      return Number.isFinite(v) && v! >= 1 ? Math.floor(v!) : DEFAULT_PREFERENCES.workspacePaneLimit;
+    })(),
+    paneSplitLimit: (() => {
+      const v = get<PaneSplitLimit>(KEY_PANE_SPLIT_LIMIT);
+      if (v && typeof v === "object" && Number.isFinite(v.width) && Number.isFinite(v.height)) {
+        return { width: Math.max(1, v.width), height: Math.max(1, v.height) };
+      }
+      return DEFAULT_PREFERENCES.paneSplitLimit;
+    })(),
   };
+
+  // Persist any config keys that weren't present so they're discoverable in the JSON.
+  const configDefaults: [string, unknown][] = [];
+  if (!map.has(KEY_WORKSPACE_PANE_LIMIT)) configDefaults.push([KEY_WORKSPACE_PANE_LIMIT, DEFAULT_PREFERENCES.workspacePaneLimit]);
+  if (!map.has(KEY_PANE_SPLIT_LIMIT)) configDefaults.push([KEY_PANE_SPLIT_LIMIT, DEFAULT_PREFERENCES.paneSplitLimit]);
+  if (configDefaults.length > 0) {
+    void Promise.all(configDefaults.map(([k, v]) => store.set(k, v))).then(() => store.save());
+  }
+
+  return result;
 }
 
 export async function setTheme(value: ThemePref): Promise<void> {

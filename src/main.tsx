@@ -11,7 +11,7 @@ import ReactDOM from "react-dom/client";
 import App from "./app/App";
 import { initLaunchDir } from "./lib/launchDir";
 import { USE_CUSTOM_WINDOW_CONTROLS } from "./lib/platform";
-import { initWorkspaceState } from "./modules/workspaces/lib/workspaceState";
+import { flushWorkspaceState, initWorkspaceState } from "./modules/workspaces/lib/workspaceState";
 
 if (USE_CUSTOM_WINDOW_CONTROLS) {
   document.documentElement.dataset.chrome = "borderless";
@@ -47,3 +47,17 @@ const showWindow = () => {
 setTimeout(showWindow, 50);
 // Safety net: if the first show somehow fails to take effect, force again.
 setTimeout(showWindow, 500);
+
+// Flush pending workspace state before the window closes so the 800ms debounce
+// never loses changes. We prevent the close, save, then re-trigger the close.
+let flushing = false;
+getCurrentWindow().onCloseRequested(async (event) => {
+  if (flushing) return;
+  event.preventDefault();
+  flushing = true;
+  try {
+    await flushWorkspaceState();
+  } finally {
+    void getCurrentWindow().close();
+  }
+});

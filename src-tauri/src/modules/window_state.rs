@@ -5,19 +5,25 @@ use std::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// All values are in LOGICAL pixels so they map directly to
+/// `WebviewWindowBuilder::inner_size` and `WebviewWindowBuilder::position`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowGeometry {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
     pub maximized: bool,
+    /// OS name of the monitor this window was on (e.g. "Built-in Retina Display").
+    /// Used on restore to detect disconnected monitors and fall back to primary.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monitor: Option<String>,
 }
 
 impl Default for WindowGeometry {
     fn default() -> Self {
-        Self { x: 0, y: 0, width: 1280, height: 800, maximized: false }
+        Self { x: 0.0, y: 0.0, width: 1280.0, height: 800.0, maximized: false, monitor: None }
     }
 }
 
@@ -46,6 +52,8 @@ struct WindowStateFile {
     version: u32,
     windows: HashMap<String, WindowEntry>,
     window_order: Vec<String>,
+    /// Label of the window that had OS focus when the app last closed.
+    focused_window: Option<String>,
 }
 
 pub struct WindowStateManager {
@@ -60,12 +68,20 @@ impl WindowStateManager {
 
     /// Returns true if the file was loaded successfully.
     pub fn load(&self) -> bool {
+        log::info!("[window-state] loading from {}", self.path.display());
         let Ok(content) = std::fs::read_to_string(&self.path) else {
+            log::info!("[window-state] file not found or unreadable — starting fresh");
             return false;
         };
         let Ok(state) = serde_json::from_str::<WindowStateFile>(&content) else {
+            log::warn!("[window-state] file corrupt or wrong schema — starting fresh");
             return false;
         };
+        log::info!(
+            "[window-state] loaded {} window(s): {:?}",
+            state.window_order.len(),
+            state.window_order
+        );
         *self.inner.write().expect("window state lock poisoned") = state;
         true
     }
@@ -80,6 +96,10 @@ impl WindowStateManager {
         }
         if std::fs::write(&tmp, json).is_ok() {
             let _ = std::fs::rename(&tmp, &self.path);
+            log::info!(
+                "[window-state] saved — windows: {:?}",
+                state.window_order
+            );
         }
     }
 
@@ -87,11 +107,21 @@ impl WindowStateManager {
         self.inner.read().expect("window state lock poisoned").window_order.clone()
     }
 
+    pub fn set_focused_window(&self, label: &str) {
+        self.inner.write().expect("window state lock poisoned").focused_window =
+            Some(label.to_string());
+    }
+
+    pub fn get_focused_window(&self) -> Option<String> {
+        self.inner.read().expect("window state lock poisoned").focused_window.clone()
+    }
+
     pub fn get_entry(&self, label: &str) -> Option<WindowEntry> {
         self.inner.read().expect("window state lock poisoned").windows.get(label).cloned()
     }
 
     pub fn add_window(&self, label: String) {
+        log::info!("[window-state] add_window: {label}");
         let mut state = self.inner.write().expect("window state lock poisoned");
         state.windows.entry(label.clone()).or_default();
         if !state.window_order.contains(&label) {
@@ -100,6 +130,7 @@ impl WindowStateManager {
     }
 
     pub fn remove_window(&self, label: &str) {
+        log::info!("[window-state] remove_window: {label}");
         let mut state = self.inner.write().expect("window state lock poisoned");
         state.windows.remove(label);
         state.window_order.retain(|l| l != label);
@@ -108,23 +139,28 @@ impl WindowStateManager {
     pub fn update_workspace(&self, label: &str, workspaces: Value, active_index: usize) {
         let mut state = self.inner.write().expect("window state lock poisoned");
         if let Some(entry) = state.windows.get_mut(label) {
+            let ws_count = entry.workspaces.as_array().map(|a| a.len()).unwrap_or(0);
+            log::info!("[window-state] update_workspace: {label} — {ws_count} workspace(s), activeIndex={active_index}");
             entry.workspaces = workspaces;
             entry.active_index = active_index;
+        } else {
+            log::warn!("[window-state] update_workspace: label '{label}' not found in state");
         }
     }
 
     pub fn update_geometry(
         &self,
         label: &str,
-        x: i32,
-        y: i32,
-        width: u32,
-        height: u32,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
         maximized: bool,
+        monitor: Option<String>,
     ) {
         let mut state = self.inner.write().expect("window state lock poisoned");
         if let Some(entry) = state.windows.get_mut(label) {
-            entry.geometry = WindowGeometry { x, y, width, height, maximized };
+            entry.geometry = WindowGeometry { x, y, width, height, maximized, monitor };
         }
     }
 }
@@ -146,7 +182,7 @@ mod tests {
     #[test]
     fn load_missing_file_returns_false_and_empty_order() {
         let dir = TempDir::new().unwrap();
-        let path = dir.path().join("terax-windows.json");
+        let path = dir.path().join("workspaces.json");
         let mgr = WindowStateManager::new(path);
         assert!(!mgr.load());
         assert!(mgr.window_order().is_empty());
@@ -175,7 +211,7 @@ mod tests {
     #[test]
     fn save_and_reload() {
         let dir = TempDir::new().unwrap();
-        let path = dir.path().join("terax-windows.json");
+        let path = dir.path().join("workspaces.json");
         let mgr = WindowStateManager::new(path.clone());
         mgr.add_window("w-aabbccdd".to_string());
         mgr.update_workspace("w-aabbccdd", serde_json::json!([{"id": "ws1"}]), 2);
@@ -192,7 +228,7 @@ mod tests {
     #[test]
     fn load_corrupt_file_returns_false_and_empty_order() {
         let dir = TempDir::new().unwrap();
-        let path = dir.path().join("terax-windows.json");
+        let path = dir.path().join("workspaces.json");
         std::fs::write(&path, "not valid json").unwrap();
         let mgr = WindowStateManager::new(path);
         assert!(!mgr.load());
@@ -204,12 +240,12 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let mgr = WindowStateManager::new(dir.path().join("state.json"));
         mgr.add_window("w-aabbccdd".to_string());
-        mgr.update_geometry("w-aabbccdd", 100, 200, 1280, 800, false);
+        mgr.update_geometry("w-aabbccdd", 100.0, 200.0, 1280.0, 800.0, false, None);
         let entry = mgr.get_entry("w-aabbccdd").unwrap();
-        assert_eq!(entry.geometry.x, 100);
-        assert_eq!(entry.geometry.y, 200);
-        assert_eq!(entry.geometry.width, 1280);
-        assert_eq!(entry.geometry.height, 800);
+        assert_eq!(entry.geometry.x, 100.0);
+        assert_eq!(entry.geometry.y, 200.0);
+        assert_eq!(entry.geometry.width, 1280.0);
+        assert_eq!(entry.geometry.height, 800.0);
         assert!(!entry.geometry.maximized);
     }
 
@@ -217,7 +253,7 @@ mod tests {
     fn update_geometry_on_unknown_label_is_noop() {
         let dir = TempDir::new().unwrap();
         let mgr = WindowStateManager::new(dir.path().join("state.json"));
-        mgr.update_geometry("w-ghost", 0, 0, 100, 100, false);
+        mgr.update_geometry("w-ghost", 0.0, 0.0, 100.0, 100.0, false, None);
         assert!(mgr.get_entry("w-ghost").is_none());
     }
 }
