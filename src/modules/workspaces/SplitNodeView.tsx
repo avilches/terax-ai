@@ -14,6 +14,7 @@ type Props = {
   workspaceCwd?: string;
   activePaneId: string;
   isWorkspaceActive: boolean;
+  tabInsertPaneId: string | null;
   onActivatePanel: (workspaceId: string, panelId: string) => void;
   onClosePanel: (workspaceId: string, panelId: string) => void;
   onFocusPane: (workspaceId: string, paneId: string) => void;
