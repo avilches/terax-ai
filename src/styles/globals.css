@@ -118,6 +118,7 @@
     --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.56 0.021 213.5);
+    --tab-focus-indicator: var(--primary);
 }
 
 @layer base {
@@ -159,6 +160,7 @@
   --terminal-ansi-bright-magenta: #c084fc;
   --terminal-ansi-bright-cyan: #22d3ee;
   --terminal-ansi-bright-white: #fafafa;
+  --tab-focus-indicator: var(--primary);
 }
 
 :root {

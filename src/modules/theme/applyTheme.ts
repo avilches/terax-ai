@@ -28,6 +28,7 @@ const COLOR_VAR: Record<keyof ThemeColors, string> = {
   sidebarBorder: "--sidebar-border",
   sidebarRing: "--sidebar-ring",
   radius: "--radius",
+  tabFocusIndicator: "--tab-focus-indicator",
 };
 
 const ANSI_VARS: readonly string[] = [
