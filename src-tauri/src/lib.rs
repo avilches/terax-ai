@@ -256,9 +256,9 @@ pub fn run() {
             let handle = app.handle().clone();
             if order.is_empty() {
                 let id = window_state::generate_window_id();
-                handle
-                    .state::<window_state::WindowStateManager>()
-                    .add_window(id.clone());
+                let mgr = handle.state::<window_state::WindowStateManager>();
+                mgr.add_window(id.clone());
+                mgr.save();
                 create_app_window(&handle, id, None)
                     .map_err(std::io::Error::other)?;
             } else {
