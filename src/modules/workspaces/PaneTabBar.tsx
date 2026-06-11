@@ -62,7 +62,10 @@ function DraggableTab({
       )}
     >
       {active && paneFocused && (
-        <div className={cn("absolute inset-x-0 top-0 bg-primary", connected ? "h-[1.5px]" : "h-0.5 rounded-t")} />
+        <div
+          className={cn("absolute inset-x-0 top-0", connected ? "h-[1.5px]" : "h-0.5 rounded-t")}
+          style={{ background: "var(--tab-focus-indicator)" }}
+        />
       )}
       <span className="shrink-0 opacity-70">{panelIcon(panel, workspaceId)}</span>
       <span
