@@ -5,6 +5,7 @@ export const caffeine: Theme = {
   name: "Caffeine",
   description: "Warm coffee tones — cream and espresso.",
   editorTheme: { dark: "copilot", light: "github-light" },
+  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {

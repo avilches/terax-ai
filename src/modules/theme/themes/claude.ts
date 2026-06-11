@@ -5,6 +5,7 @@ export const claude: Theme = {
   name: "Claude",
   description: "Warm clay accent on paper.",
   editorTheme: { dark: "copilot", light: "github-light" },
+  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {

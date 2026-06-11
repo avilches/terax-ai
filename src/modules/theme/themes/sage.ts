@@ -5,6 +5,7 @@ export const sage: Theme = {
   name: "Sage",
   description: "Muted forest green — calm and soft.",
   editorTheme: { dark: "atomone", light: "github-light" },
+  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {

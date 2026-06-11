@@ -12,6 +12,7 @@ export const nord: Theme = {
   name: "Nord",
   description: "Arctic, north-bluish palette.",
   editorTheme: { dark: "nord", light: "xcode-light" },
+  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {

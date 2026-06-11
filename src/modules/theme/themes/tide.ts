@@ -5,6 +5,7 @@ export const tide: Theme = {
   name: "Tide",
   description: "Deep slate with muted teal.",
   editorTheme: { dark: "nord", light: "github-light" },
+  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {

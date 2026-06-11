@@ -5,6 +5,7 @@ export const rosePine: Theme = {
   name: "Rosé Pine",
   description: "Soho vibes, all-natural pine and rose.",
   editorTheme: { dark: "atomone", light: "xcode-light" },
+  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {
