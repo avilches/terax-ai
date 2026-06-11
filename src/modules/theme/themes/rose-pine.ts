@@ -5,7 +5,6 @@ export const rosePine: Theme = {
   name: "Rosé Pine",
   description: "Soho vibes, all-natural pine and rose.",
   editorTheme: { dark: "atomone", light: "xcode-light" },
-  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {
@@ -47,6 +46,7 @@ export const rosePine: Theme = {
           "#9ccfd8", "#c4a7e7", "#ebbcba", "#e0def4",
         ],
       },
+      inactivePaneDim: { terminal: 0.12 },
     },
     light: {
       colors: {
@@ -88,6 +88,7 @@ export const rosePine: Theme = {
           "#56949f", "#907aa9", "#d7827e", "#575279",
         ],
       },
+      inactivePaneDim: { terminal: 0.015 },
     },
   },
 };

@@ -46,6 +46,7 @@ export type TerminalPalette = Partial<{
 export type ThemeVariant = {
   colors?: ThemeColors;
   terminal?: TerminalPalette;
+  inactivePaneDim?: Record<string, number>;
 };
 
 export type Theme = {
@@ -61,7 +62,6 @@ export type Theme = {
     light?: string;
     dark?: string;
   };
-  inactivePaneDim?: Record<string, number>;
 };
 
 export const DEFAULT_THEME_ID = "terax-default";

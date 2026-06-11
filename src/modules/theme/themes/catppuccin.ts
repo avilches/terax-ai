@@ -5,7 +5,6 @@ export const catppuccin: Theme = {
   name: "Catppuccin",
   description: "Mocha + Latte — soothing pastel.",
   editorTheme: { dark: "atomone", light: "xcode-light" },
-  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {
@@ -47,6 +46,7 @@ export const catppuccin: Theme = {
           "#89b4fa", "#f5c2e7", "#94e2d5", "#a6adc8",
         ],
       },
+      inactivePaneDim: { terminal: 0.12 },
     },
     light: {
       colors: {
@@ -88,6 +88,7 @@ export const catppuccin: Theme = {
           "#1e66f5", "#ea76cb", "#179299", "#bcc0cc",
         ],
       },
+      inactivePaneDim: { terminal: 0.015 },
     },
   },
 };

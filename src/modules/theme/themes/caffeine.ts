@@ -5,7 +5,6 @@ export const caffeine: Theme = {
   name: "Caffeine",
   description: "Warm coffee tones — cream and espresso.",
   editorTheme: { dark: "copilot", light: "github-light" },
-  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {
@@ -48,6 +47,7 @@ export const caffeine: Theme = {
           "#a9c3e0", "#ddc0db", "#a4d4da", "#f0e6d6",
         ],
       },
+      inactivePaneDim: { terminal: 0.12 },
     },
     light: {
       colors: {
@@ -90,6 +90,7 @@ export const caffeine: Theme = {
           "#4a7eb5", "#aa5f9a", "#3a989c", "#202020",
         ],
       },
+      inactivePaneDim: { terminal: 0.015 },
     },
   },
 };

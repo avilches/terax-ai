@@ -5,7 +5,6 @@ export const tokyoNight: Theme = {
   name: "Tokyo Night",
   description: "Calm, blue-leaning dark theme.",
   editorTheme: { dark: "tokyo-night" },
-  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {
@@ -47,6 +46,7 @@ export const tokyoNight: Theme = {
           "#7da6ff", "#bb9af7", "#0db9d7", "#c0caf5",
         ],
       },
+      inactivePaneDim: { terminal: 0.12 },
     },
   },
 };

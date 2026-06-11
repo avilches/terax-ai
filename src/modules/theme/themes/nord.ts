@@ -12,7 +12,6 @@ export const nord: Theme = {
   name: "Nord",
   description: "Arctic, north-bluish palette.",
   editorTheme: { dark: "nord", light: "xcode-light" },
-  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {
@@ -49,6 +48,7 @@ export const nord: Theme = {
         selection: "rgba(136,192,208,0.25)",
         ansi: NORD_ANSI,
       },
+      inactivePaneDim: { terminal: 0.12 },
     },
     light: {
       colors: {
@@ -85,6 +85,7 @@ export const nord: Theme = {
         selection: "rgba(94,129,172,0.25)",
         ansi: NORD_ANSI,
       },
+      inactivePaneDim: { terminal: 0.015 },
     },
   },
 };

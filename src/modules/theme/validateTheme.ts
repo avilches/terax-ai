@@ -89,7 +89,15 @@ function parseVariant(raw: unknown, path: string): ThemeVariant | string {
   if (typeof colors === "string") return colors;
   const terminal = parseTerminal(raw.terminal, `${path}.terminal`);
   if (typeof terminal === "string") return terminal;
-  return { colors, terminal };
+  const variant: ThemeVariant = { colors, terminal };
+  if (isObj(raw.inactivePaneDim)) {
+    const dim: Record<string, number> = {};
+    for (const [k, v] of Object.entries(raw.inactivePaneDim as Record<string, unknown>)) {
+      if (typeof v === "number" && v >= 0 && v <= 1) dim[k] = v;
+    }
+    if (Object.keys(dim).length > 0) variant.inactivePaneDim = dim;
+  }
+  return variant;
 }
 
 export function validateTheme(raw: unknown): ValidationResult {
@@ -127,13 +135,6 @@ export function validateTheme(raw: unknown): ValidationResult {
     if (isStr(raw.editorTheme.light)) et.light = raw.editorTheme.light;
     if (isStr(raw.editorTheme.dark)) et.dark = raw.editorTheme.dark;
     if (et.light || et.dark) theme.editorTheme = et;
-  }
-  if (isObj(raw.inactivePaneDim)) {
-    const dim: Record<string, number> = {};
-    for (const [k, v] of Object.entries(raw.inactivePaneDim as Record<string, unknown>)) {
-      if (typeof v === "number" && v >= 0 && v <= 1) dim[k] = v;
-    }
-    if (Object.keys(dim).length > 0) theme.inactivePaneDim = dim;
   }
   return { ok: true, theme };
 }

@@ -5,7 +5,6 @@ export const gruvbox: Theme = {
   name: "Gruvbox",
   description: "Warm, earthy retro palette.",
   editorTheme: { dark: "gruvbox-dark", light: "github-light" },
-  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {
@@ -47,6 +46,7 @@ export const gruvbox: Theme = {
           "#83a598", "#d3869b", "#8ec07c", "#ebdbb2",
         ],
       },
+      inactivePaneDim: { terminal: 0.12 },
     },
     light: {
       colors: {
@@ -88,6 +88,7 @@ export const gruvbox: Theme = {
           "#458588", "#b16286", "#689d6a", "#3c3836",
         ],
       },
+      inactivePaneDim: { terminal: 0.015 },
     },
   },
 };

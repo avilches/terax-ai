@@ -5,7 +5,6 @@ export const claude: Theme = {
   name: "Claude",
   description: "Warm clay accent on paper.",
   editorTheme: { dark: "copilot", light: "github-light" },
-  inactivePaneDim: { terminal: 0.12 },
   variants: {
     dark: {
       colors: {
@@ -48,6 +47,7 @@ export const claude: Theme = {
           "#a9c3e0", "#e0b0c6", "#9bd4cf", "#f5f4ee",
         ],
       },
+      inactivePaneDim: { terminal: 0.12 },
     },
     light: {
       colors: {
@@ -90,6 +90,7 @@ export const claude: Theme = {
           "#4a7eb5", "#b0608a", "#3a9398", "#3d3a2f",
         ],
       },
+      inactivePaneDim: { terminal: 0.015 },
     },
   },
 };
