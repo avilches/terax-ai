@@ -15,6 +15,7 @@ type Props = {
   workspaceCwd?: string;
   focused: boolean;
   isWorkspaceActive: boolean;
+  tabInsertPaneId: string | null;
   onActivatePanel: (workspaceId: string, panelId: string) => void;
   onClosePanel: (workspaceId: string, panelId: string) => void;
   onFocusPane: (workspaceId: string, paneId: string) => void;
@@ -26,19 +27,22 @@ function DropZone({
   id,
   hitClassName,
   visualClassName,
+  forceOver,
 }: {
   id: string;
   hitClassName: string;
   visualClassName: string;
+  forceOver?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
+  const active = isOver || (forceOver ?? false);
   return (
     <>
       <div
         ref={setNodeRef}
         className={cn("absolute cursor-grabbing", hitClassName)}
       />
-      {isOver && (
+      {active && (
         <div
           className={cn(
             "pointer-events-none absolute bg-primary/25 ring-2 ring-inset ring-primary/60",
@@ -56,6 +60,7 @@ export function PaneView({
   workspaceCwd: _workspaceCwd,
   focused,
   isWorkspaceActive,
+  tabInsertPaneId,
   onActivatePanel,
   onClosePanel,
   onFocusPane,
@@ -117,6 +122,7 @@ export function PaneView({
         activePanelId={pane.activePanelId}
         paneFocused={focused}
         workspaceId={workspaceId}
+        isDragging={isDragging}
         onActivate={(panelId) => onActivatePanel(workspaceId, panelId)}
         onClose={(panelId) => onClosePanel(workspaceId, panelId)}
         onNewTerminal={() => onNewTerminal(workspaceId, pane.id)}
@@ -171,6 +177,7 @@ export function PaneView({
                 id={`zone:${pane.id}:center`}
                 hitClassName="pointer-events-auto inset-0"
                 visualClassName="inset-0 rounded-md"
+                forceOver={tabInsertPaneId === pane.id}
               />
             ) : (
               <>
@@ -220,6 +227,7 @@ export function PaneView({
                         : "bottom-1/4 left-1/4 right-1/4 top-1/4",
                   )}
                   visualClassName="inset-0 rounded-md"
+                  forceOver={tabInsertPaneId === pane.id}
                 />
               </>
             )}
