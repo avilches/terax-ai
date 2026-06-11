@@ -18,7 +18,7 @@ type Props = {
 
 function InsertionGap({ show }: { show: boolean }) {
   return (
-    <div className="relative w-0 shrink-0">
+    <div className="relative w-0 shrink-0 -mx-[1px]">
       {show && (
         <div className="pointer-events-none absolute inset-y-1 -left-px z-10 w-0.5 rounded-full bg-primary" />
       )}
