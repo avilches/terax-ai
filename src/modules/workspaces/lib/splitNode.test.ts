@@ -291,3 +291,89 @@ describe("movePanelBetweenPanes", () => {
     expect(movePanelBetweenPanes(pane, "unknown", "p1")).toBe(pane);
   });
 });
+
+describe("movePanelBetweenPanes with targetIndex", () => {
+  function makeFilledPane(id: string, panelIds: string[]): PaneNode {
+    return {
+      kind: "pane",
+      id,
+      panels: panelIds.map((pid) => ({ id: pid, kind: "terminal" as const })),
+      activePanelId: panelIds[0] ?? null,
+    };
+  }
+
+  test("inserts panel at index 0 (beginning of target pane)", () => {
+    const p1 = makeFilledPane("p1", ["a", "b"]);
+    const p2 = makeFilledPane("p2", ["c", "d"]);
+    const tree: SplitNode = {
+      kind: "split",
+      id: "s0",
+      orientation: "horizontal",
+      first: p1,
+      second: p2,
+      dividerPosition: 0.5,
+    };
+    const result = movePanelBetweenPanes(tree, "a", "p2", 0);
+    expect(result.kind).toBe("split");
+    if (result.kind === "split") {
+      const target = result.second as PaneNode;
+      expect(target.panels.map((p) => p.id)).toEqual(["a", "c", "d"]);
+    }
+  });
+
+  test("inserts panel at index 1 (middle of target pane)", () => {
+    const p1 = makeFilledPane("p1", ["a", "b"]);
+    const p2 = makeFilledPane("p2", ["c", "d"]);
+    const tree: SplitNode = {
+      kind: "split",
+      id: "s0",
+      orientation: "horizontal",
+      first: p1,
+      second: p2,
+      dividerPosition: 0.5,
+    };
+    const result = movePanelBetweenPanes(tree, "a", "p2", 1);
+    expect(result.kind).toBe("split");
+    if (result.kind === "split") {
+      const target = result.second as PaneNode;
+      expect(target.panels.map((p) => p.id)).toEqual(["c", "a", "d"]);
+    }
+  });
+
+  test("inserts panel at end when targetIndex equals target panel count", () => {
+    const p1 = makeFilledPane("p1", ["a", "b"]);
+    const p2 = makeFilledPane("p2", ["c", "d"]);
+    const tree: SplitNode = {
+      kind: "split",
+      id: "s0",
+      orientation: "horizontal",
+      first: p1,
+      second: p2,
+      dividerPosition: 0.5,
+    };
+    const result = movePanelBetweenPanes(tree, "a", "p2", 2);
+    expect(result.kind).toBe("split");
+    if (result.kind === "split") {
+      const target = result.second as PaneNode;
+      expect(target.panels.map((p) => p.id)).toEqual(["c", "d", "a"]);
+    }
+  });
+
+  test("activates moved panel in target pane", () => {
+    const p1 = makeFilledPane("p1", ["a", "b"]);
+    const p2 = makeFilledPane("p2", ["c", "d"]);
+    const tree: SplitNode = {
+      kind: "split",
+      id: "s0",
+      orientation: "horizontal",
+      first: p1,
+      second: p2,
+      dividerPosition: 0.5,
+    };
+    const result = movePanelBetweenPanes(tree, "a", "p2", 1);
+    if (result.kind === "split") {
+      const target = result.second as PaneNode;
+      expect(target.activePanelId).toBe("a");
+    }
+  });
+});
