@@ -100,7 +100,7 @@ export function PaneView({
   });
 
   const { resolvedTheme } = useTheme();
-  const dimOpacity = focused ? 0 : (resolvedTheme.inactivePaneDim?.[activePanel?.kind ?? ""] ?? 0);
+  const dimOpacity = focused || !activePanel ? 0 : (resolvedTheme.inactivePaneDim?.[activePanel.kind] ?? 0);
 
   const handleFocus = useCallback(() => {
     if (!focused) onFocusPane(workspaceId, pane.id);
