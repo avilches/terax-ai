@@ -138,70 +138,183 @@ inactivos ídem desde el fix anterior.
 
 ---
 
----
-
-## Bug 4: geometría de ventana (posición/tamaño) no se guarda ni restaura (EN CURSO)
+## Bug 4 (PENDIENTE): WebGL no se adjunta al arrancar ni en terminales nuevos
 
 ### Síntoma
 
-Al cerrar y reabrir la app, las ventanas aparecen siempre en posición y tamaño por defecto
-(1280×800, posición aleatoria por macOS). El JSON `workspaces.json` siempre muestra `x:0, y:0,
-width:1280, height:800`.
+Al arrancar con varios terminales restaurados, ninguno muestra GPU. A medida que el usuario
+crea terminales adicionales (split, Cmd+T), los terminales *existentes* eventualmente obtienen
+GPU, pero el *nuevo* terminal nunca lo consigue.
 
-### Causa 1 — save: `if let` triple falla silenciosamente
+### Lo que sabemos con certeza
 
-El handler `CloseRequested` usaba:
+**Secuencia de arranque relevante** (`main.tsx`):
+
+```
+await initWorkspaceState()         // IPC, carga el estado guardado
+ReactDOM.createRoot(...).render()  // programa el render
+await invoke("restore_window_geometry")
+setTimeout(showWindow, 50)         // ventana oculta hasta aquí
+setTimeout(showWindow, 500)        // safety-net
+```
+
+`main.tsx` dice explícitamente en un comentario:
+> "rAF is throttled while the window is hidden and would never fire"
+
+**Secuencia de montaje del terminal** (desde el montado del componente):
+
+1. `useTerminalSession` setup effect → `ensureSession` → `s.ready` Promise
+2. `s.ready = (async () => { await ensureMonoFontsLoaded(); await document.fonts.ready; })()`
+3. Las fuentes están bundled, `document.fonts.ready` resuelve en ~1-5ms
+4. `attachSession` → `bindLeafToSlot` → `bindSlot` → `scheduleUnhide` → rAF encolado
+5. Todo esto ocurre a t~5ms, **antes de `showWindow` a t=50ms**
+
+En `scheduleUnhide`, los rAFs encolados mientras la ventana está oculta **no disparan** (o se
+descartan) cuando la ventana se muestra.
+
+**Por qué los terminales existentes sí consiguen GPU después de un split:**
+
+Cuando el usuario divide un pane, `react-resizable-panels` redimensiona el contenedor del terminal
+existente. El `ResizeObserver` detecta el cambio (`w !== lastW`) y llama directamente a
+`fitAddon.fit()`. Añadir el retry de WebGL ahí funcionó porque:
+- El contenedor tiene dimensiones reales
+- La ventana lleva tiempo visible (el usuario la está usando)
+- La llamada es directa, sin depender de rAF
+
+**Por qué el terminal nuevo nunca consigue GPU:**
+
+El nuevo terminal se monta con el contenedor dentro de un `ResizablePanelGroup` que puede
+empezar en 0×0. La secuencia es:
+1. `bindSlot`: `container.clientWidth = 0` → `slot.lastW = 0`
+2. `scheduleUnhide`: rAF encolado
+3. `ResizeObserver` se dispara cuando el container pasa de 0→real
+4. Pero `slot.currentLeafId !== p.leafId` puede ser verdad (React Strict Mode hace doble
+   montaje: el primer mount se limpia, el segundo mount tiene un slot diferente)
+5. El second mount's ResizeObserver ya puede encontrar `w === slot.lastW` si el container tenía
+   dimensiones reales en el momento del segundo `bindSlot`
+
+### Intentos fallidos (todos en `rendererPool.ts`)
+
+| Intento | Razón del fallo |
+|---|---|
+| `setWindowActive(true)` → `applyWebglToSlots()` | `windowActive` puede inicializarse como `true` (WKWebView reporta `hasFocus()=true` aunque la ventana esté oculta). El guard `if (windowActive === active) return` bloquea el retry. |
+| `prefsHydrated` en deps de `webglPref` useEffect | `loadPreferences()` puede resolver antes del `showWindow`. `applyWebglPreference` es llamado pero los slots aún tienen 0×0 o la GPU no está lista. |
+| `setTimeout(retryMissingWebgl, 600)` en `configureRendererPool` | Solo se ejecuta **una vez al importar el módulo**. Para terminales creados después (split, Cmd+T), esos 600ms ya pasaron. |
+| Backoff global `[300, 600, 1000, 1500, 2500, 4000]` | Mismo problema: se programa al importar el módulo, no cuando se crea cada terminal. |
+| Por-slot retry desde `bindSlot`: `scheduleSlotWebglRetry(leafId)` | Se ejecuta pero `attachWebgl` sigue fallando. Posiblemente la superficie GPU de WKWebView no está lista incluso a 200ms, 500ms, etc. post-bind. |
+| Mover unhide al outer rAF (1 frame antes del attach WebGL) | El problema no es el timing entre unhide y attach; es que WKWebView no proporciona la superficie GPU hasta un momento indeterminado post-`window.show()`. |
+| `ResizeObserver` retry al pasar de 0×0 a dimensiones reales | Funciona para terminales existentes tras un split, pero no para el terminal nuevo por la razón del punto anterior. |
+
+### Un test que funcionó (no reproducible de forma fiable)
+
+Con la build que incluía `console.log("[terax-webgl] attached slot X")` en `attachWebgl`, el
+usuario reportó "6 attached slot X" por ventana al arrancar, con GPU en todos los terminales.
+No se ha podido determinar qué condición concreta hizo que funcionara ese intento.
+
+### Hipótesis para el siguiente intento
+
+El problema es de sincronización entre `window.show()` y la disponibilidad de la superficie GPU
+de WKWebView. `canvas.getContext('webgl2')` devuelve null (o lanza) cuando se llama antes de que
+la superficie esté lista. El número de ms exacto varía.
+
+**Hipótesis A (más probable)**: `main.tsx` es el único lugar donde sabemos exactamente cuándo
+se muestra la ventana. Llamar `applyWebglPreference(true)` explícitamente desde `main.tsx`
+después de `showWindow` + un delay medido es más fiable que cualquier mecanismo indirecto.
+
+```typescript
+// main.tsx, después del setTimeout(showWindow, 50):
+setTimeout(() => {
+  // importar rendererPool y llamar applyWebglPreference
+}, 300); // 300ms post-show
+```
+
+El obstáculo: `applyWebglPreference` itera `slots[]` — necesita que React ya haya montado los
+terminales. A t=350ms desde el inicio (50ms show + 300ms delay) los componentes llevan ~345ms
+montados, suficiente.
+
+**Hipótesis B**: El problema es que `attachWebgl` falla silenciosamente (`catch` vacío). Si se
+loguea el error exacto, puede revelar que es un problema de canvas 0×0, no de GPU surface.
+`slot.term.cols` y `slot.term.rows` serían 0 si `fitAddon.fit()` produjo 0×0. En ese caso el
+fix es que `attachWebgl` no intente crear el contexto si el terminal tiene 0 cols/rows.
+
+**Hipótesis C**: Usar el evento Tauri `tauri://window-created` o escuchar el focus nativo de
+WKWebView para disparar `applyWebglPreference` en el momento exacto en que la ventana tiene
+superficie GPU disponible.
+
+### Lo que NO se debe hacer
+
+- Más retries en `rendererPool.ts` sin entender la causa raíz: se ha añadido y quitado
+  `applyWebglToSlots`, `scheduleWebglRetries`, `scheduleSlotWebglRetry`, etc. sin éxito.
+- Modificar `scheduleUnhide` sin confirmar que el problema está ahí.
+- Asumir que un timeout mayor resuelve el problema sin verificarlo primero.
+
+---
+
+## Bug 4b: geometría de ventana — tamaño se restaura, posición descartada (RESUELTO PARCIALMENTE)
+
+### Estado final
+
+**Tamaño**: se guarda en pixels físicos (`inner_size()`) y se restaura con `set_size(PhysicalSize)`
+llamado desde un comando IPC (`restore_window_geometry`) invocado en `main.tsx` antes del `show()`
+— equivalente al `on_window_ready` del plugin oficial. Funciona de forma fiable.
+
+**Posición**: descartada intencionalmente. Restaurar posición en macOS resultó demasiado frágil
+para el riesgo que supone (ventana fuera de pantalla al cambiar de monitor). macOS coloca la
+ventana automáticamente.
+
+### Historial de problemas encontrados
+
+#### Save: `if let` triple falla silenciosamente
+
+El handler `CloseRequested` original agrupaba tres llamadas en un solo `if let`:
 
 ```rust
 if let (Ok(pos), Ok(inner), Ok(scale)) =
     (w.outer_position(), w.inner_size(), w.scale_factor())
 ```
 
-Si cualquiera de los tres falla (en particular `scale_factor()` que puede fallar si el WebKit
-ya está parcialmente desmontado), el bloque completo se salta y la geometría nunca se actualiza.
-La entrada en el JSON queda con los valores por defecto (0, 0, 1280, 800).
+Si cualquiera falla, el bloque completo se omite. En particular `scale_factor()` puede fallar
+cuando el WebKit ya está parcialmente desmontado al cerrar. La geometría queda en el valor por
+defecto del JSON (0×0 o 1280×800).
 
-**Fix**: separar las llamadas y usar `unwrap_or(1.0)` para `scale_factor()` de modo que un fallo
-en ella no impida guardar posición y tamaño.
+**Fix**: separar las llamadas. `scale_factor()` con `unwrap_or(1.0)`.
 
-### Causa 2 — save: unidades mezcladas (físico vs lógico)
+#### Save: geometría no se persiste si el proceso se mata (Ctrl-C en dev)
 
-`outer_position()` e `inner_size()` devuelven **pixels físicos**. El builder
-`WebviewWindowBuilder::inner_size(f64, f64)` y `.position(f64, f64)` esperan **pixels lógicos**.
-En pantallas Retina (scale_factor=2), guardar físico (2560×1600) y restaurar como lógico produce
-una ventana de 5120×3200 lógicos (doble de la pantalla).
+`CloseRequested` no se dispara cuando el proceso se termina por señal. El JSON quedaba con los
+valores por defecto creados en `add_window()`.
 
-**Fix**: convertir siempre a lógico al guardar: `pos.to_logical(scale)` y `inner.to_logical(scale)`.
+**Fix**: guardar geometría también en `WindowEvent::Focused(true)` y `Resized` para que la
+última geometría conocida quede en disco aunque la app sea matada.
 
-### Causa 3 — restore: macOS "cascade" ignora posición pre-show
+#### Save/restore: unidades mezcladas (físico vs lógico)
 
-macOS aplica posicionamiento automático (cascade) cuando una ventana se muestra por primera vez.
-Cualquier posición establecida antes de `show()` — ya sea en el builder (`.position()`) o
-mediante `set_position()` en un estado oculto — puede ser sobreescrita por el OS.
+`outer_position()` e `inner_size()` devuelven pixels físicos. `WebviewWindowBuilder::inner_size()`
+y `.position()` esperan pixels lógicos. En Retina 2×, guardar físico (2560×1600) como lógico
+producía una ventana de 5120×3200 (el doble del monitor).
 
-Establecer la posición justo después de `show()` (sincrónico) tampoco funciona de forma fiable
-porque AppKit procesa el `orderFront:` de forma asíncrona en el run loop de Cocoa.
+**Fix**: para el tamaño, `inner_size()` (físico) se pasa directamente a `set_size(PhysicalSize)`.
+Para posición se intentó `to_logical(scale)` pero se descartó junto con la posición.
 
-**Fix correcto**: escuchar `WindowEvent::Focused(true)` con un flag de "primer foco". Cuando la
-ventana recibe foco por primera vez, macOS ya ha terminado de posicionarla (cascade completado).
-Aplicar `set_size(LogicalSize)` y `set_position(LogicalPosition)` en ese momento garantiza que
-la geometría se establece sobre la ventana ya visible y estabilizada.
+#### Restore de posición: macOS cascade sobreescribe cualquier posición pre-show
 
-### Intentos fallidos de restore
+macOS aplica cascade (reposicionamiento automático) cuando muestra una ventana. Probado y fallido:
 
-- **`builder.position(x, y)` en el builder**: ignorado por macOS cascade al hacer `show()`.
-- **`set_position()` antes de `show()`**: el frame se aplica en ventana oculta pero macOS lo
-  descarta al hacer `orderFront:`.
-- **`set_position()` justo después de `show()` (síncrono)**: `show()` pone el `orderFront:` en
-  la cola del run loop de Cocoa; la llamada síncrona siguiente a `set_position()` llega antes de
-  que Cocoa procese el show, por lo que la posición se aplica en la ventana todavía oculta y
-  macOS la sobreescribe al mostrarla.
+- **`builder.position(x, y)`**: ignorado por cascade en `orderFront:`.
+- **`set_position()` antes de `show()`**: frame aplicado en ventana oculta, descartado al mostrar.
+- **`set_position()` justo después de `show()` (síncrono)**: `orderFront:` es asíncrono en Cocoa;
+  la llamada llega antes de que AppKit procese el show.
+- **`set_position()` en `Focused(true)`**: funciona a veces pero no de forma fiable en todos los
+  ciclos (dependiendo del estado de focus al arrancar con múltiples ventanas).
+- **`restore_window_geometry` IPC desde `main.tsx` con `PhysicalPosition`**: funciona en algunos
+  casos pero inconsistente según el monitor y el orden de creación de ventanas.
 
-### Nota sobre `tauri-plugin-window-state`
+El plugin oficial (`tauri-plugin-window-state`) usaba `WindowEvent::Ready` de Tauri 1 para esto.
+En Tauri 2 ese evento no existe. Sin un equivalente fiable, la restauración de posición es
+demasiado frágil para el riesgo de dejar ventanas fuera de pantalla en configuraciones
+multi-monitor o al cambiar de monitor.
 
-El plugin oficial usaba `WindowEvent::Ready` (disponible en Tauri 1) para aplicar geometría
-después de que la ventana estuviera completamente inicializada. En Tauri 2 ese evento no existe.
-El equivalente más cercano es el primer `Focused(true)`.
+**Decisión**: no restaurar posición. macOS coloca las ventanas automáticamente.
 
 ---
 
