@@ -1,4 +1,5 @@
 import { IS_LINUX, IS_WINDOWS } from "@/lib/platform";
+import symbolsNerdFontUrl from "@/assets/fonts/SymbolsNerdFontMono-Regular.woff2?url";
 
 // VS Code's per-platform monospace defaults, with the bundled JetBrains Mono
 // in front so a fresh install renders identically on every OS. The browser
@@ -61,10 +62,15 @@ export function ensureMonoFontsLoaded(): Promise<void> {
     monoReady = Promise.resolve();
     return monoReady;
   }
+  const symbolsFace = new FontFace(
+    "Symbols Nerd Font Mono",
+    `url(${symbolsNerdFontUrl})`,
+    { style: "normal" },
+  );
   monoReady = Promise.allSettled([
     document.fonts.load('400 14px "JetBrains Mono"'),
     document.fonts.load('700 14px "JetBrains Mono"'),
-    document.fonts.load('12px "Symbols Nerd Font Mono"', ""),
+    symbolsFace.load().then((f) => { document.fonts.add(f); }),
   ]).then(() => undefined);
   return monoReady;
 }
