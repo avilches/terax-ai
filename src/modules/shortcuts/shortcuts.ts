@@ -152,7 +152,7 @@ export const SHORTCUTS: Shortcut[] = [
     defaultBindings: IS_MAC
       ? [{ meta: true, ctrl: true, key: "ArrowRight" }]
       : [{ ctrl: true, alt: true, key: "ArrowRight" }],
-  },  
+  },
   {
     id: "pane.source",
     label: "Toggle source panel",
