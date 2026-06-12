@@ -14,7 +14,7 @@ use std::time::Duration;
 use serde::Serialize;
 use shared_child::SharedChild;
 
-use crate::modules::workspace::{authorize_spawn_cwd, WorkspaceEnv, WorkspaceRegistry};
+use crate::modules::workspace::{authorize_user_spawn_cwd, WorkspaceEnv, WorkspaceRegistry};
 #[cfg(windows)]
 use crate::modules::workspace::validate_wsl_distro_name;
 
@@ -52,7 +52,7 @@ pub async fn shell_run_command(
     }
 
     let workspace = WorkspaceEnv::from_option(workspace);
-    authorize_spawn_cwd(&registry, cwd.as_deref(), &workspace)?;
+    authorize_user_spawn_cwd(&registry, cwd.as_deref(), &workspace)?;
     let cwd_path = cwd
         .as_deref()
         .map(str::trim)
@@ -176,7 +176,7 @@ pub fn shell_session_open(
     workspace: Option<WorkspaceEnv>,
 ) -> Result<u32, String> {
     let workspace = WorkspaceEnv::from_option(workspace);
-    authorize_spawn_cwd(&registry, cwd.as_deref(), &workspace)?;
+    authorize_user_spawn_cwd(&registry, cwd.as_deref(), &workspace)?;
     let initial = match cwd.as_deref().filter(|s| !s.is_empty()) {
         Some(c) => c.to_string(),
         None => {
@@ -211,7 +211,7 @@ pub async fn shell_session_run(
         .cloned()
         .ok_or_else(|| "no shell session".to_string())?;
     let effective_workspace = workspace.clone().unwrap_or_else(|| session.workspace.clone());
-    authorize_spawn_cwd(&registry, cwd.as_deref(), &effective_workspace)?;
+    authorize_user_spawn_cwd(&registry, cwd.as_deref(), &effective_workspace)?;
     let dur = Duration::from_secs(
         timeout_secs
             .unwrap_or(DEFAULT_TIMEOUT_SECS)
@@ -239,7 +239,7 @@ pub fn shell_bg_spawn(
     workspace: Option<WorkspaceEnv>,
 ) -> Result<u32, String> {
     let workspace = WorkspaceEnv::from_option(workspace);
-    authorize_spawn_cwd(&registry, cwd.as_deref(), &workspace)?;
+    authorize_user_spawn_cwd(&registry, cwd.as_deref(), &workspace)?;
     let proc = background::spawn(command, cwd, workspace)?;
     let id = state.next_bg_id.fetch_add(1, Ordering::Relaxed);
     state.bg.write().unwrap().insert(id, proc);
