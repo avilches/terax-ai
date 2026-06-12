@@ -280,9 +280,14 @@ export default function App() {
     return home;
   }, [activeCwd, workspaces, home]);
 
-  const inheritedCwd = useCallback((): string | undefined => {
-    return activeCwd ?? lastTerminalCwdRef.current ?? home ?? undefined;
-  }, [activeCwd, home]);
+  const openNewTerminal = useCallback((targetPaneId?: string) => {
+    if (!activeWorkspace) return;
+    openPanel(activeWorkspace.id, targetPaneId ?? activeWorkspace.activePaneId, {
+      id: crypto.randomUUID(),
+      kind: "terminal",
+      cwd: activeCwd ?? activeWorkspace.cwd,
+    });
+  }, [activeWorkspace, activeCwd, openPanel]);
 
   // ── Window title ──────────────────────────────────────────────────────────
 
@@ -745,14 +750,9 @@ export default function App() {
       "commandPalette.open": () => openCommandPalette("commands"),
       "commandPalette.content": () => openCommandPalette("content"),
       "tab.new": () => {
-        if (!activeWorkspace) return;
-        openPanel(activeWorkspace.id, activeWorkspace.activePaneId, {
-          id: crypto.randomUUID(),
-          kind: "terminal",
-          cwd: activeWorkspace.cwd,
-        });
+        openNewTerminal();
       },
-      "workspace.new": () => addWorkspace(inheritedCwd()),
+      "workspace.new": () => addWorkspace(home ?? undefined),
       "tab.newPreview": () => openPreviewInPanel(""),
       "tab.newEditor": () => setNewEditorOpen(true),
       "tab.close": handleCloseActivePanel,
@@ -783,7 +783,7 @@ export default function App() {
         const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
         if (!el || el.getBoundingClientRect().width < paneSplitLimit.width) return;
         const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "horizontal");
-        openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
+        openNewTerminal(newPaneId);
       },
       "pane.splitDown": () => {
         if (!activeWorkspace) return;
@@ -792,7 +792,7 @@ export default function App() {
         const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
         if (!el || el.getBoundingClientRect().height < paneSplitLimit.height) return;
         const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "vertical");
-        openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
+        openNewTerminal(newPaneId);
       },
       "pane.focusUp": () => focusPaneInDirection("up"),
       "pane.focusDown": () => focusPaneInDirection("down"),
@@ -824,12 +824,13 @@ export default function App() {
       activeWorkspaceId,
       activePane,
       activePanelId,
+      activeCwd,
       workspaces,
       openCommandPalette,
       cycleWorkspace,
       activatePanel,
       handleCloseActivePanel,
-      inheritedCwd,
+      openNewTerminal,
       addWorkspace,
       openPanel,
       openPreviewInPanel,
@@ -837,6 +838,7 @@ export default function App() {
       focusPane,
       toggleSourceControl,
       setActiveWorkspaceId,
+      home,
       zoomIn,
       zoomOut,
       zoomReset,
@@ -886,15 +888,10 @@ export default function App() {
             explorerRoot,
             home,
             openNewTab: () => {
-              if (!activeWorkspace) return;
-              openPanel(activeWorkspace.id, activeWorkspace.activePaneId, {
-                id: crypto.randomUUID(),
-                kind: "terminal",
-                cwd: activeWorkspace.cwd,
-              });
+              openNewTerminal();
             },
-            openNewWorkspace: () => addWorkspace(inheritedCwd()),
-            openNewBlock: () => addWorkspace(inheritedCwd()),
+            openNewWorkspace: () => addWorkspace(home ?? undefined),
+            openNewBlock: () => addWorkspace(home ?? undefined),
             openNewEditor: () => setNewEditorOpen(true),
             openNewPreview: () => openPreviewInPanel(""),
             openGitGraph: openGitGraphFromContext,
@@ -907,7 +904,7 @@ export default function App() {
               const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
               if (!el || el.getBoundingClientRect().width < paneSplitLimit.width) return;
               const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "horizontal");
-              openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
+              openNewTerminal(newPaneId);
             },
             splitPaneDown: () => {
               if (!activeWorkspace) return;
@@ -916,7 +913,7 @@ export default function App() {
               const el = document.querySelector<HTMLElement>(`[data-pane-id="${activeWorkspace.activePaneId}"]`);
               if (!el || el.getBoundingClientRect().height < paneSplitLimit.height) return;
               const newPaneId = splitPane(activeWorkspace.id, activeWorkspace.activePaneId, "vertical");
-              openPanel(activeWorkspace.id, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeWorkspace.cwd });
+              openNewTerminal(newPaneId);
             },
             focusSearch: () => searchInlineRef.current?.focus(),
             focusExplorerSearch: () => rightPanelRef.current?.focusExplorer(),
@@ -934,8 +931,7 @@ export default function App() {
       explorerRoot,
       home,
       addWorkspace,
-      openPanel,
-      inheritedCwd,
+      openNewTerminal,
       openPreviewInPanel,
       openGitGraphFromContext,
       toggleSourceControl,
@@ -973,7 +969,7 @@ export default function App() {
               workspaces={workspaces.map((w) => ({ id: w.id, title: w.title, kind: "terminal" }))}
               activeId={activeWorkspaceId}
               onSelect={setActiveWorkspaceId}
-              onNew={() => addWorkspace(inheritedCwd())}
+              onNew={() => addWorkspace(home ?? undefined)}
               onReorder={reorderWorkspaces}
             />
 
