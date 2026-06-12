@@ -23,7 +23,6 @@ import {
   listCustomThemes,
   onCustomThemesChange,
 } from "./customThemes";
-import { SurfaceLayer } from "./SurfaceLayer";
 import { getBuiltinTheme, getDefaultTheme } from "./themes";
 import type { Theme } from "./types";
 
@@ -188,7 +187,6 @@ export function ThemeProvider({ children, defaultMode = "system" }: ThemeProvide
 
   return (
     <ThemeProviderContext.Provider value={value}>
-      <SurfaceLayer />
       {children}
     </ThemeProviderContext.Provider>
   );

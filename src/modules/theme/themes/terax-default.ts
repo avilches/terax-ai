@@ -6,7 +6,7 @@ export const teraxDefault: Theme = {
   description: "The default Terax look - clean glass over neutral surfaces.",
   editorTheme: { dark: "atomone", light: "atomone" },
   variants: {
-    light: { colors: { tabFocusIndicator: "oklch(0.578 0.199 264.4)" }, inactivePaneDim: { terminal: 0.015 } },
-    dark:  { colors: { tabFocusIndicator: "oklch(0.578 0.199 264.4)" }, inactivePaneDim: { terminal: 0.12 } },
+    light: { inactivePaneDim: { terminal: 0.015 } },
+    dark:  { inactivePaneDim: { terminal: 0.12 } },
   },
 };

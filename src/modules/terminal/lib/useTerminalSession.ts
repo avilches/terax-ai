@@ -19,7 +19,6 @@ import {
 import "../block/block.css";
 import {
   acquireSlot,
-  applyBackgroundActive,
   applyCursorBlink,
   applyFontFamily,
   applyFontSize,
@@ -632,13 +631,6 @@ export function useTerminalSession({
   useEffect(() => {
     applyCursorBlink(cursorBlink);
   }, [cursorBlink]);
-
-  const bgActive = usePreferencesStore(
-    (p) => p.backgroundKind === "image" && !!p.backgroundImageId,
-  );
-  useEffect(() => {
-    applyBackgroundActive(bgActive);
-  }, [bgActive]);
 
   useEffect(() => {
     const s = sessions.get(leafId);

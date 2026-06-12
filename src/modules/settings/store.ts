@@ -8,8 +8,6 @@ export type TabBarStyle = "connected" | "pill";
 
 export const DEFAULT_THEME_ID = "terax-default";
 
-export type BackgroundKind = "none" | "image";
-
 export const EDITOR_THEMES = [
   "atomone",
   "aura",
@@ -43,10 +41,6 @@ export type PaneSplitLimit = { width: number; height: number };
 export type Preferences = {
   theme: ThemePref;
   themeId: string;
-  backgroundKind: BackgroundKind;
-  backgroundImageId: string | null;
-  backgroundOpacity: number;
-  backgroundBlur: number;
   editorTheme: EditorThemeId;
   autostart: boolean;
   vimMode: boolean;
@@ -75,10 +69,6 @@ export type Preferences = {
 const STORE_PATH = "terax-settings.json";
 const KEY_THEME = "theme";
 const KEY_THEME_ID = "themeId";
-const KEY_BG_KIND = "backgroundKind";
-const KEY_BG_IMAGE_ID = "backgroundImageId";
-const KEY_BG_OPACITY = "backgroundOpacity";
-const KEY_BG_BLUR = "backgroundBlur";
 const KEY_EDITOR_THEME = "editorTheme";
 const KEY_AUTOSTART = "autostart";
 const KEY_VIM_MODE = "vimMode";
@@ -122,10 +112,6 @@ export const TERMINAL_SCROLLBACK_PRESETS = [
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: "system",
   themeId: DEFAULT_THEME_ID,
-  backgroundKind: "none",
-  backgroundImageId: null,
-  backgroundOpacity: 0.5,
-  backgroundBlur: 0,
   editorTheme: "atomone",
   autostart: false,
   vimMode: false,
@@ -174,17 +160,6 @@ export async function loadPreferences(): Promise<Preferences> {
   const result: Preferences = {
     theme: get<ThemePref>(KEY_THEME) ?? DEFAULT_PREFERENCES.theme,
     themeId: get<string>(KEY_THEME_ID) ?? DEFAULT_PREFERENCES.themeId,
-    backgroundKind:
-      get<BackgroundKind>(KEY_BG_KIND) ?? DEFAULT_PREFERENCES.backgroundKind,
-    backgroundImageId:
-      get<string | null>(KEY_BG_IMAGE_ID) ??
-      DEFAULT_PREFERENCES.backgroundImageId,
-    backgroundOpacity: clampBgOpacity(
-      get<number>(KEY_BG_OPACITY) ?? DEFAULT_PREFERENCES.backgroundOpacity,
-    ),
-    backgroundBlur: clampBlur(
-      get<number>(KEY_BG_BLUR) ?? DEFAULT_PREFERENCES.backgroundBlur,
-    ),
     editorTheme:
       get<EditorThemeId>(KEY_EDITOR_THEME) ?? DEFAULT_PREFERENCES.editorTheme,
     autostart: get<boolean>(KEY_AUTOSTART) ?? DEFAULT_PREFERENCES.autostart,
@@ -276,36 +251,6 @@ export async function setTheme(value: ThemePref): Promise<void> {
 
 export async function setThemeId(value: string): Promise<void> {
   await writePref(KEY_THEME_ID, value);
-}
-
-/** Slider stores 0..1. Actual rendered opacity is halved in SurfaceLayer
- *  so the image never exceeds 50% — keeps UI/terminal readable at any setting. */
-export const BG_OPACITY_RENDER_FACTOR = 0.5;
-
-function clampBgOpacity(v: number): number {
-  if (!Number.isFinite(v)) return 0.7;
-  return Math.min(1, Math.max(0, v));
-}
-
-function clampBlur(v: number): number {
-  if (!Number.isFinite(v)) return 16;
-  return Math.min(64, Math.max(0, Math.round(v)));
-}
-
-export async function setBackgroundKind(value: BackgroundKind): Promise<void> {
-  await writePref(KEY_BG_KIND, value);
-}
-
-export async function setBackgroundImageId(value: string | null): Promise<void> {
-  await writePref(KEY_BG_IMAGE_ID, value);
-}
-
-export async function setBackgroundOpacity(value: number): Promise<void> {
-  await writePref(KEY_BG_OPACITY, clampBgOpacity(value));
-}
-
-export async function setBackgroundBlur(value: number): Promise<void> {
-  await writePref(KEY_BG_BLUR, clampBlur(value));
 }
 
 export async function setEditorTheme(value: EditorThemeId): Promise<void> {
@@ -430,10 +375,6 @@ export async function onPreferencesChange(
   const map: Record<string, PrefKey> = {
     [KEY_THEME]: "theme",
     [KEY_THEME_ID]: "themeId",
-    [KEY_BG_KIND]: "backgroundKind",
-    [KEY_BG_IMAGE_ID]: "backgroundImageId",
-    [KEY_BG_OPACITY]: "backgroundOpacity",
-    [KEY_BG_BLUR]: "backgroundBlur",
     [KEY_EDITOR_THEME]: "editorTheme",
     [KEY_AUTOSTART]: "autostart",
     [KEY_VIM_MODE]: "vimMode",
