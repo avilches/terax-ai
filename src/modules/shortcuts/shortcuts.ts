@@ -17,8 +17,10 @@ export type ShortcutId =
   | "tab.selectByIndex"
   | "pane.splitRight"
   | "pane.splitDown"
-  | "pane.focusNext"
-  | "pane.focusPrev"
+  | "pane.focusUp"
+  | "pane.focusDown"
+  | "pane.focusLeft"
+  | "pane.focusRight"
   | "pane.source"
   | "terminal.clear"
   | "terminal.toggleInput"
@@ -120,16 +122,36 @@ export const SHORTCUTS: Shortcut[] = [
     defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "d" }],
   },
   {
-    id: "pane.focusNext",
-    label: "Focus next pane",
+    id: "pane.focusUp",
+    label: "Focus pane above",
     group: "Panes",
-    defaultBindings: [{ [MOD_PROP]: true, key: "]" }],
+    defaultBindings: IS_MAC
+      ? [{ meta: true, ctrl: true, key: "ArrowUp" }]
+      : [{ ctrl: true, alt: true, key: "ArrowUp" }],
   },
   {
-    id: "pane.focusPrev",
-    label: "Focus previous pane",
+    id: "pane.focusDown",
+    label: "Focus pane below",
     group: "Panes",
-    defaultBindings: [{ [MOD_PROP]: true, key: "[" }],
+    defaultBindings: IS_MAC
+      ? [{ meta: true, ctrl: true, key: "ArrowDown" }]
+      : [{ ctrl: true, alt: true, key: "ArrowDown" }],
+  },
+  {
+    id: "pane.focusLeft",
+    label: "Focus pane to the left",
+    group: "Panes",
+    defaultBindings: IS_MAC
+      ? [{ meta: true, ctrl: true, key: "ArrowLeft" }]
+      : [{ ctrl: true, alt: true, key: "ArrowLeft" }],
+  },
+  {
+    id: "pane.focusRight",
+    label: "Focus pane to the right",
+    group: "Panes",
+    defaultBindings: IS_MAC
+      ? [{ meta: true, ctrl: true, key: "ArrowRight" }]
+      : [{ ctrl: true, alt: true, key: "ArrowRight" }],
   },  
   {
     id: "pane.source",
