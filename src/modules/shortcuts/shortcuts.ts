@@ -226,13 +226,13 @@ export const SHORTCUTS: Shortcut[] = [
     id: "workspace.prev",
     label: "Previous workspace",
     group: "General",
-    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "{" }],
+    defaultBindings: [{ [MOD_PROP]: true, alt: true, key: "ArrowUp" }],
   },
   {
     id: "workspace.next",
     label: "Next workspace",
     group: "General",
-    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "}" }],
+    defaultBindings: [{ [MOD_PROP]: true, alt: true, key: "ArrowDown" }],
   },
   {
     id: "view.zoomIn",
