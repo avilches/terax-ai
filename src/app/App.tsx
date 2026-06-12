@@ -947,7 +947,7 @@ export default function App() {
   const shell = (
     <ThemeProvider>
       <TooltipProvider>
-        <div className="relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
+        <div className="zoom-content relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
           {!zenMode && (
             <Header
               onToggleSidebar={toggleRightPanel}
@@ -1016,7 +1016,7 @@ export default function App() {
               )}
 
               <ResizablePanel id="center" minSize="30%">
-                <div className="zoom-content flex h-full min-h-0 flex-col">
+                <div className="flex h-full min-h-0 flex-col">
                   <div className="relative min-h-0 flex-1">
                     <WorkspaceView
                       workspaces={workspaces}
