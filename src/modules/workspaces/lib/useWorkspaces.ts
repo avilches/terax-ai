@@ -319,6 +319,12 @@ export function useWorkspaces(initial?: { cwd?: string; initialWorkspaces?: Work
     updatePanelData(workspaceId, panelId, (p) => p.kind === "terminal" ? { ...p, runningCommand: cmd ?? undefined } : p);
   }, [updatePanelData]);
 
+  const setWorkspaceCwd = useCallback((workspaceId: string, cwd: string) => {
+    setWorkspaces((prev) =>
+      prev.map((w) => w.id === workspaceId ? { ...w, cwd } : w)
+    );
+  }, []);
+
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
@@ -365,6 +371,7 @@ export function useWorkspaces(initial?: { cwd?: string; initialWorkspaces?: Work
     closePanel,
     updatePanelData,
     setTerminalPanelCwd,
+    setWorkspaceCwd,
     setTerminalRunningCommand,
     findPanelGlobal,
     findPaneGlobal,
