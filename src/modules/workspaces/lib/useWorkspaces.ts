@@ -320,8 +320,9 @@ export function useWorkspaces(initial?: { cwd?: string; initialWorkspaces?: Work
   }, [updatePanelData]);
 
   const setWorkspaceCwd = useCallback((workspaceId: string, cwd: string) => {
+    const normalized = cwd.length > 1 ? cwd.replace(/\/$/, "") : cwd;
     setWorkspaces((prev) =>
-      prev.map((w) => w.id === workspaceId ? { ...w, cwd } : w)
+      prev.map((w) => w.id === workspaceId ? { ...w, cwd: normalized } : w)
     );
   }, []);
 
