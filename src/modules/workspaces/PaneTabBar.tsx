@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { panelIcon, panelTitle } from "./lib/panelTitle";
 import type { Panel } from "./lib/types";
 import { usePreferencesStore } from "@/modules/settings/preferences";
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 type Props = {
   panels: Panel[];
@@ -130,6 +130,54 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
   const tabBarStyle = usePreferencesStore((s) => s.tabBarStyle);
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activePanelIdRef = useRef(activePanelId);
+  const userScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => { activePanelIdRef.current = activePanelId; });
+
+  const scrollActiveIntoView = (behavior: ScrollBehavior = 'auto') => {
+    const container = scrollContainerRef.current;
+    const id = activePanelIdRef.current;
+    if (!container || !id) return;
+    const tab = container.querySelector<HTMLElement>(`[data-panel-id="${id}"]`);
+    if (!tab) return;
+    const cr = container.getBoundingClientRect();
+    const tr = tab.getBoundingClientRect();
+    if (tr.left < cr.left) {
+      container.scrollBy({ left: -(cr.left - tr.left + 4), behavior });
+    } else if (tr.right > cr.right) {
+      container.scrollBy({ left: tr.right - cr.right + 4, behavior });
+    }
+  };
+
+  // Scroll active tab into view when it changes (unless user is browsing with wheel)
+  useEffect(() => {
+    if (userScrollTimerRef.current) return;
+    scrollActiveIntoView('auto');
+  }, [activePanelId]);
+
+  // Wheel scroll: translate vertical delta to horizontal, snap back to active tab after idle
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      container.scrollLeft += delta;
+      if (userScrollTimerRef.current) clearTimeout(userScrollTimerRef.current);
+      userScrollTimerRef.current = setTimeout(() => {
+        userScrollTimerRef.current = null;
+        scrollActiveIntoView('smooth');
+      }, 800);
+    };
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      if (userScrollTimerRef.current) clearTimeout(userScrollTimerRef.current);
+    };
+  }, []);
+
   useDndMonitor({
     onDragOver(event) {
       const overId = event.over?.id ? String(event.over.id) : null;
@@ -159,6 +207,7 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
 
   return (
     <div
+      ref={scrollContainerRef}
       className={cn(
         "flex h-7 shrink-0 items-center overflow-x-auto bg-card/60 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         tabBarStyle === "connected"
