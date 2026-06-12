@@ -193,7 +193,7 @@ export default function App() {
 
   const rightPanelRef = useRef<RightPanelHandle>(null);
   const rightPanelOpen = usePreferencesStore((s) => s.rightPanelOpen);
-  const rightPanelSide = usePreferencesStore((s) => s.rightPanelSide);
+  const panelSide = usePreferencesStore((s) => s.panelSide);
 
   // ── Live terminal panel tracking for session disposal ─────────────────────
 
@@ -957,6 +957,7 @@ export default function App() {
           {!zenMode && (
             <Header
               onToggleSidebar={toggleRightPanel}
+              panelSide={panelSide}
               onOpenCommandPalette={() => openCommandPalette("commands")}
               onActivateAgent={onActivateAgent}
               onOpenSettings={() => void openSettingsWindow()}
@@ -981,8 +982,8 @@ export default function App() {
               orientation="horizontal"
               className="min-h-0 flex-1"
             >
-              {/* Tool panel on LEFT when rightPanelSide === "left" */}
-              {rightPanelOpen && rightPanelSide === "left" && (
+              {/* Tool panel on LEFT when panelSide === "left" */}
+              {rightPanelOpen && panelSide === "left" && (
                 <>
                   <ResizablePanel
                     id="tool-panel"
@@ -1057,8 +1058,8 @@ export default function App() {
                 </div>
               </ResizablePanel>
 
-              {/* Tool panel on RIGHT when rightPanelSide === "right" (default) */}
-              {rightPanelOpen && rightPanelSide === "right" && (
+              {/* Tool panel on RIGHT when panelSide === "right" (default) */}
+              {rightPanelOpen && panelSide === "right" && (
                 <>
                   <ResizableHandle withHandle />
                   <ResizablePanel

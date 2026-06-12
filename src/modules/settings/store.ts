@@ -60,7 +60,7 @@ export type Preferences = {
   rightPanelOpen: boolean;
   rightPanelWidth: number;
   rightPanelActiveTab: "explorer" | "git" | "history";
-  rightPanelSide: "left" | "right";
+  panelSide: "left" | "right";
   tabBarStyle: TabBarStyle;
   workspacePaneLimit: number;
   paneSplitLimit: PaneSplitLimit;
@@ -89,7 +89,7 @@ const KEY_EDITOR_AUTO_SAVE_DELAY = "editorAutoSaveDelay";
 const KEY_RIGHT_PANEL_OPEN = "rightPanelOpen";
 const KEY_RIGHT_PANEL_WIDTH = "rightPanelWidth";
 const KEY_RIGHT_PANEL_ACTIVE_TAB = "rightPanelActiveTab";
-const KEY_RIGHT_PANEL_SIDE = "rightPanelSide";
+const KEY_PANEL_SIDE = "panelSide";
 const KEY_TAB_BAR_STYLE = "tabBarStyle";
 const KEY_WORKSPACE_PANE_LIMIT = "workspacePaneLimit";
 const KEY_PANE_SPLIT_LIMIT = "paneSplitLimit";
@@ -131,7 +131,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   rightPanelOpen: true,
   rightPanelWidth: 240,
   rightPanelActiveTab: "explorer",
-  rightPanelSide: "right",
+  panelSide: "right",
   tabBarStyle: "connected",
   workspacePaneLimit: 8,
   paneSplitLimit: { width: 250, height: 250 },
@@ -213,9 +213,9 @@ export async function loadPreferences(): Promise<Preferences> {
     rightPanelActiveTab:
       get<"explorer" | "git" | "history">(KEY_RIGHT_PANEL_ACTIVE_TAB) ??
       DEFAULT_PREFERENCES.rightPanelActiveTab,
-    rightPanelSide: (() => {
-      const v = get<string>(KEY_RIGHT_PANEL_SIDE);
-      return v === "left" || v === "right" ? v : DEFAULT_PREFERENCES.rightPanelSide;
+    panelSide: (() => {
+      const v = get<string>(KEY_PANEL_SIDE);
+      return v === "left" || v === "right" ? v : DEFAULT_PREFERENCES.panelSide;
     })(),
     tabBarStyle: (() => {
       const v = get<string>(KEY_TAB_BAR_STYLE);
@@ -358,8 +358,8 @@ export async function setRightPanelActiveTab(
   await writePref(KEY_RIGHT_PANEL_ACTIVE_TAB, value);
 }
 
-export async function setRightPanelSide(value: "left" | "right"): Promise<void> {
-  await writePref(KEY_RIGHT_PANEL_SIDE, value);
+export async function setPanelSide(value: "left" | "right"): Promise<void> {
+  await writePref(KEY_PANEL_SIDE, value);
 }
 
 export async function setTabBarStyle(value: TabBarStyle): Promise<void> {
@@ -394,7 +394,7 @@ export async function onPreferencesChange(
     [KEY_RIGHT_PANEL_OPEN]: "rightPanelOpen",
     [KEY_RIGHT_PANEL_WIDTH]: "rightPanelWidth",
     [KEY_RIGHT_PANEL_ACTIVE_TAB]: "rightPanelActiveTab",
-    [KEY_RIGHT_PANEL_SIDE]: "rightPanelSide",
+    [KEY_PANEL_SIDE]: "panelSide",
     [KEY_TAB_BAR_STYLE]: "tabBarStyle",
   };
   // Same-process writes still fire onChange immediately; cross-window writes

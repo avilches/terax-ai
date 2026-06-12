@@ -17,6 +17,7 @@ import {
   setTerminalFontSize,
   setTerminalLetterSpacing,
   setZoomLevel,
+  setPanelSide,
 } from "@/modules/settings/store";
 import type { ThemePref } from "@/modules/settings/store";
 import { useTheme } from "@/modules/theme";
@@ -31,6 +32,8 @@ import {
   Moon02Icon,
   PlusSignIcon,
   Refresh01Icon,
+  SidebarLeftIcon,
+  SidebarRightIcon,
   Sun03Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -80,6 +83,7 @@ export function ThemesSection() {
   const terminalFontSize = usePreferencesStore((s) => s.terminalFontSize);
 
   const zoomLevel = usePreferencesStore((s) => s.zoomLevel);
+  const panelSide = usePreferencesStore((s) => s.panelSide);
 
   const handleThemeFiles = async (files: FileList | null) => {
     setImportError(null);
@@ -164,6 +168,31 @@ export function ThemesSection() {
             >
               <HugeiconsIcon icon={Refresh01Icon} size={11} />
             </button>
+          </div>
+        </div>
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
+          <span className="text-[12.5px] font-medium">Side panel</span>
+          <div className="flex items-center gap-1">
+            {(["left", "right"] as const).map((side) => (
+              <button
+                key={side}
+                type="button"
+                onClick={() => void setPanelSide(side)}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11.5px] transition-all",
+                  panelSide === side
+                    ? "border-foreground/60 bg-card ring-1 ring-foreground/20"
+                    : "border-border/60 bg-transparent hover:border-border",
+                )}
+              >
+                <HugeiconsIcon
+                  icon={side === "left" ? SidebarLeftIcon : SidebarRightIcon}
+                  size={12}
+                  strokeWidth={1.75}
+                />
+                <span className="capitalize">{side}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import {
   CommandIcon,
   Settings01Icon,
   SidebarLeftIcon,
+  SidebarRightIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { type RefObject, useEffect, useRef, useState } from "react";
@@ -17,6 +18,7 @@ import {
 
 type Props = {
   onToggleSidebar: () => void;
+  panelSide: "left" | "right";
   onOpenCommandPalette: () => void;
   onActivateAgent: (tabId: string, panelId: string) => void;
   onOpenSettings: () => void;
@@ -28,6 +30,7 @@ const COMPACT_WIDTH = 720;
 
 export function Header({
   onToggleSidebar,
+  panelSide,
   onOpenCommandPalette,
   onActivateAgent,
   onOpenSettings,
@@ -60,6 +63,22 @@ export function Header({
     </Button>
   );
 
+  const toggleButton = (
+    <Button
+      onClick={onToggleSidebar}
+      title="Toggle sidebar"
+      variant="ghost"
+      size="icon-sm"
+      className="shrink-0 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+    >
+      <HugeiconsIcon
+        icon={panelSide === "right" ? SidebarRightIcon : SidebarLeftIcon}
+        size={18}
+        strokeWidth={1.75}
+      />
+    </Button>
+  );
+
   return (
     <div
       ref={rootRef}
@@ -69,15 +88,7 @@ export function Header({
       }`}
     >
       <div className="flex shrink-0 items-center gap-0.5">
-        <Button
-          onClick={onToggleSidebar}
-          title="Toggle sidebar"
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <HugeiconsIcon icon={SidebarLeftIcon} size={18} strokeWidth={1.75} />
-        </Button>
+        {panelSide === "left" && toggleButton}
 
         <Button
           size="icon-sm"
@@ -86,12 +97,6 @@ export function Header({
           title="Command palette"
           className="shrink-0 gap-1.5 rounded-md px-1.5 text-muted-foreground"
         >
-          {/* <span className="text-xs font-medium">Cmd</span>
-          {!compact && paletteTokens && (
-            <Kbd className="rounded bg-transparent px-1 py-px font-sans text-[10px]">
-            {paletteTokens}
-            </Kbd>
-          )} */}
           <HugeiconsIcon icon={CommandIcon} size={14} strokeWidth={1.75} />
         </Button>
 
@@ -120,6 +125,13 @@ export function Header({
       )}
 
       {!IS_MAC && settingsButton}
+
+      {panelSide === "right" && (
+        <>
+          <span className="h-5 w-px shrink-0 bg-border" />
+          {toggleButton}
+        </>
+      )}
 
       {USE_CUSTOM_WINDOW_CONTROLS && (
         <>
