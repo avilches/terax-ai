@@ -20,7 +20,7 @@ import { ThemesSection } from "./sections/ThemesSection";
 const TABS: { id: SettingsTab; label: string; icon: typeof Settings01Icon, component: () => JSX.Element }[] =
   [
     { id: "general", label: "General", icon: Settings01Icon, component: GeneralSection },
-    { id: "themes", label: "Themes", icon: PaintBoardIcon, component: ThemesSection },
+    { id: "themes", label: "Appearance", icon: PaintBoardIcon, component: ThemesSection },
     { id: "shortcuts", label: "Shortcuts", icon: KeyboardIcon, component: ShortcutsSection },
     { id: "about", label: "About", icon: InformationCircleIcon, component: AboutSection },
   ];
@@ -48,6 +48,16 @@ export function SettingsApp() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        void getCurrentWebviewWindow().close();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const apply = (detail: string) => {

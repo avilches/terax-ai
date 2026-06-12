@@ -220,6 +220,12 @@ The reason: consistent string equality for path comparison (e.g., preventing the
 
 In development (`pnpm tauri dev`), React 19's Strict Mode double-invokes `useEffect`. This means a PTY is opened and immediately closed before the real one opens. You will see `pty opened id=1` then `pty closed id=1` followed by `pty opened id=2` in dev logs. This is expected and does not happen in production builds.
 
+### 4.8 Terminal font resolution (VS Code model)
+
+There is no runtime font detection. `src/lib/fonts.ts` resolves the terminal font the way VS Code does: a per-platform default stack (bundled JetBrains Mono first, then Menlo/Monaco on macOS, Consolas on Windows, Droid Sans Mono/DejaVu Sans Mono on Linux, ending in `monospace`), and a free-text "Font family" setting that accepts a comma-separated list. A non-empty preference is normalized (names with spaces are quoted, required by the canvas font shorthand the WebGL atlas uses) and always prepended to the default stack, so a typo or uninstalled font can never break rendering. The browser falls back per glyph through the list, which is also how Nerd Font icons resolve when the primary font lacks them. xterm runs with `customGlyphs` (pixel-perfect box-drawing/powerline glyphs drawn by the renderer, not the font) and `rescaleOverlappingGlyphs` (VS Code defaults; Nerd Font, powerline and emoji ranges are excluded from rescaling by xterm itself).
+
+Earlier approaches that were removed: auto-detecting installed Nerd Fonts via `document.fonts.check()` (false positives in WKWebView, it reports fallback-renderable rather than installed) and via `document.fonts.load()` (worked, but a curated candidate list plus a dropdown is strictly worse than VS Code's free-text stack with per-glyph fallback).
+
 ---
 
 ## 5. Known limitations

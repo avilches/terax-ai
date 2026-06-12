@@ -6,7 +6,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
@@ -14,9 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { usePreferencesStore } from "@/modules/settings/preferences";
-import type { ThemePref } from "@/modules/settings/store";
 import {
   TERMINAL_FONT_SIZES,
   TERMINAL_SCROLLBACK_PRESETS,
@@ -33,41 +30,19 @@ import {
   setTerminalScrollback,
   setTerminalWebglEnabled,
   setVimMode,
-  setZoomLevel,
 } from "@/modules/settings/store";
-import { useTheme } from "@/modules/theme";
-import {
-  ComputerIcon,
-  Moon02Icon,
-  Sun03Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { defaultMonoFontFamily } from "@/lib/fonts";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useEffect, useState } from "react";
 import { SectionHeader } from "../components/SectionHeader";
 import { SettingRow } from "../components/SettingRow";
 
-const APPEARANCE: {
-  id: ThemePref;
-  label: string;
-  icon: typeof ComputerIcon;
-}[] = [
-  { id: "system", label: "System", icon: ComputerIcon },
-  { id: "light", label: "Light", icon: Sun03Icon },
-  { id: "dark", label: "Dark", icon: Moon02Icon },
-];
-
 const LETTER_SPACINGS = [-4, -3, -2, -1, 0, 1, 2, 3, 4] as const;
-const ZOOM_MIN = 0.5;
-const ZOOM_MAX = 2.0;
-const ZOOM_STEP = 0.05;
 const AUTO_SAVE_STEP = 100;
 const AUTO_SAVE_MIN = 100;
 const AUTO_SAVE_MAX = 60000;
 
 export function GeneralSection() {
-  const { mode, setMode } = useTheme();
-
   const autostart = usePreferencesStore((s) => s.autostart);
   const restoreWindowState = usePreferencesStore((s) => s.restoreWindowState);
   const vimMode = usePreferencesStore((s) => s.vimMode);
@@ -86,7 +61,6 @@ export function GeneralSection() {
   );
   const terminalFontSize = usePreferencesStore((s) => s.terminalFontSize);
   const terminalScrollback = usePreferencesStore((s) => s.terminalScrollback);
-  const zoomLevel = usePreferencesStore((s) => s.zoomLevel);
   const agentNotifications = usePreferencesStore((s) => s.agentNotifications);
 
   useEffect(() => {
@@ -120,53 +94,6 @@ export function GeneralSection() {
         title="General"
         description="Mode, editor, and startup."
       />
-
-      <div className="flex flex-col gap-2">
-        <Label>Appearance</Label>
-        <div className="grid grid-cols-3 gap-2">
-          {APPEARANCE.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => setMode(o.id)}
-              className={cn(
-                "group flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg border bg-card transition-all",
-                mode === o.id
-                  ? "border-foreground/60 ring-1 ring-foreground/20"
-                  : "border-border/60 hover:border-border",
-              )}
-            >
-              <HugeiconsIcon icon={o.icon} size={18} strokeWidth={1.5} />
-              <span className="text-[11.5px]">{o.label}</span>
-            </button>
-          ))}
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          For theme, background and customization, see the{" "}
-          <strong className="font-medium text-foreground">Themes</strong> tab.
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label>Zoom</Label>
-        <div className="flex flex-col gap-3 rounded-lg border border-border/60 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[11.5px] text-muted-foreground">
-              UI zoom level
-            </span>
-            <span className="tabular-nums text-[11px] text-muted-foreground">
-              {Math.round(zoomLevel * 100)}%
-            </span>
-          </div>
-          <Slider
-            value={[zoomLevel]}
-            min={ZOOM_MIN}
-            max={ZOOM_MAX}
-            step={ZOOM_STEP}
-            onValueChange={(v) => void setZoomLevel(v[0] ?? 1)}
-          />
-        </div>
-      </div>
 
       <div className="flex flex-col gap-2">
         <Label>Editor</Label>
@@ -255,18 +182,10 @@ export function GeneralSection() {
             onCheckedChange={(v) => void setTerminalCursorBlink(v)}
           />
         </SettingRow>
-        <SettingRow
-          title="Font family"
-          description='Nerd Font name for icons (e.g. "CaskaydiaCove Nerd Font Mono"). Leave blank to auto-detect.'
-        >
-          <input
-            type="text"
-            value={terminalFontFamily}
-            placeholder="Auto-detect"
-            onChange={(e) => void setTerminalFontFamily(e.target.value)}
-            className="h-8 w-48 rounded-md border border-border bg-background px-2.5 text-[12px] outline-none focus:border-foreground/40"
-          />
-        </SettingRow>
+        <FontFamilyInput
+          value={terminalFontFamily}
+          onChange={(v) => void setTerminalFontFamily(v)}
+        />
         <SettingRow
           title="Letter spacing"
           description="Extra horizontal space between characters (px). Use negative values to tighten Nerd Fonts."
@@ -375,6 +294,50 @@ function Label({ children }: { children: React.ReactNode }) {
     <span className="text-[11px] font-medium tracking-tight text-muted-foreground">
       {children}
     </span>
+  );
+}
+
+function FontFamilyInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = () => {
+    const next = draft.trim();
+    setDraft(next);
+    if (next !== value) onChange(next);
+  };
+
+  return (
+    <SettingRow
+      title="Font family"
+      description='Comma-separated list with per-glyph fallback. Leave empty for the platform default. Set a Nerd Font (e.g. "MesloLGS NF") first for prompt icons.'
+    >
+      <Input
+        type="text"
+        value={draft}
+        placeholder={defaultMonoFontFamily()}
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="off"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+          }
+        }}
+        className="h-8 w-56 rounded-md border border-border bg-background px-2.5 text-[12px] md:text-[12px] outline-none focus:border-foreground/40 focus-visible:ring-0 focus-visible:border-foreground/40"
+      />
+    </SettingRow>
   );
 }
 

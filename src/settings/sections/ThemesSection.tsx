@@ -7,7 +7,9 @@ import {
   setBackgroundImageId,
   setBackgroundKind,
   setBackgroundOpacity,
+  setZoomLevel,
 } from "@/modules/settings/store";
+import type { ThemePref } from "@/modules/settings/store";
 import { useTheme } from "@/modules/theme";
 import {
   deleteBgImage,
@@ -18,14 +20,30 @@ import { listBuiltinThemes } from "@/modules/theme/themes";
 import { validateTheme } from "@/modules/theme/validateTheme";
 import { deleteThemeFile, emitThemeEdit } from "@/modules/theme/themeFiles";
 import { DEFAULT_THEME_ID } from "@/modules/theme/types";
-import { Edit02Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import {
+  ComputerIcon,
+  Edit02Icon,
+  Moon02Icon,
+  PlusSignIcon,
+  Refresh01Icon,
+  Sun03Icon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useMemo, useRef, useState } from "react";
 import { SectionHeader } from "../components/SectionHeader";
 
+const APPEARANCE_MODES: { id: ThemePref; label: string; icon: typeof ComputerIcon }[] = [
+  { id: "system", label: "System", icon: ComputerIcon },
+  { id: "light", label: "Light", icon: Sun03Icon },
+  { id: "dark", label: "Dark", icon: Moon02Icon },
+];
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.0;
+const ZOOM_STEP = 0.05;
+
 export function ThemesSection() {
-  const { themeId, setThemeId, resolvedMode, customThemes } = useTheme();
+  const { themeId, setThemeId, resolvedMode, customThemes, mode, setMode } = useTheme();
   const builtinThemes = listBuiltinThemes();
   const themes = useMemo(
     () => [...builtinThemes, ...customThemes],
@@ -51,6 +69,7 @@ export function ThemesSection() {
     void getCurrentWindow().hide();
   };
 
+  const zoomLevel = usePreferencesStore((s) => s.zoomLevel);
   const backgroundKind = usePreferencesStore((s) => s.backgroundKind);
   const backgroundImageId = usePreferencesStore((s) => s.backgroundImageId);
   const backgroundOpacity = usePreferencesStore((s) => s.backgroundOpacity);
@@ -119,12 +138,61 @@ export function ThemesSection() {
   return (
     <div className="flex flex-col gap-6">
       <SectionHeader
-        title="Themes"
-        description="Theme, background image, and customization."
+        title="Appearance"
+        description="Color mode, theme, zoom, and background."
       />
 
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
+          <span className="text-[12.5px] font-medium">Mode</span>
+          <div className="flex items-center gap-1">
+            {APPEARANCE_MODES.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => setMode(o.id)}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11.5px] transition-all",
+                  mode === o.id
+                    ? "border-foreground/60 bg-card ring-1 ring-foreground/20"
+                    : "border-border/60 bg-transparent hover:border-border",
+                )}
+              >
+                <HugeiconsIcon icon={o.icon} size={12} strokeWidth={1.75} />
+                <span>{o.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
+          <span className="text-[12.5px] font-medium">Zoom</span>
+          <div className="flex items-center gap-2">
+            <Slider
+              value={[zoomLevel]}
+              min={ZOOM_MIN}
+              max={ZOOM_MAX}
+              step={ZOOM_STEP}
+              onValueChange={(v) => void setZoomLevel(v[0] ?? 1)}
+              className="w-32"
+            />
+            <span className="w-9 shrink-0 text-right tabular-nums text-[11px] text-muted-foreground">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+            <button
+              type="button"
+              title="Reset to default"
+              disabled={zoomLevel === 1.0}
+              onClick={() => void setZoomLevel(1.0)}
+              className="flex size-[22px] cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+            >
+              <HugeiconsIcon icon={Refresh01Icon} size={11} />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div
-        className="flex flex-col gap-2"
+        className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card/60 p-3"
         onDragOver={(e) => {
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
@@ -135,7 +203,7 @@ export function ThemesSection() {
         }}
       >
         <div className="flex items-center justify-between">
-          <Label>Theme</Label>
+          <span className="text-[12.5px] font-medium">Theme</span>
           <div className="flex items-center gap-1.5">
             <Button
               variant="outline"

@@ -150,6 +150,10 @@ Each module is self-contained, exports a thin barrel via `index.ts`, and owns it
 - **shadcn/ui** is configured (`components.json`, style `radix-luma`, base `mist`, icon lib **hugeicons**). Primitives
   in `src/components/ui/` — don't hand-edit; re-run `pnpm dlx shadcn add` to upgrade.
 - **Tailwind v4** — no `tailwind.config.*`, config is in `src/App.css` via `@theme`. Use `cn()` from `@/lib/utils`.
+- **Small inline action buttons** (reset, clear, edit within a row or table): use a plain `<button>` with `title` for the
+  tooltip (native, no Tooltip component), `size-[22px]`, `flex items-center justify-center rounded
+  text-muted-foreground transition-colors hover:text-foreground`. Icon size 11-12px. The `ActionButton` in
+  `ShortcutsSection.tsx` is the reference implementation.
 - Animation: `motion` (Framer Motion successor). Resizable layout: `react-resizable-panels`.
 - Path imports: always `@/…`, never relative across modules.
 - Cross-platform paths: anywhere a path may originate from OSC 7, the explorer, or the OS, normalize separators with

@@ -1,24 +1,56 @@
-const NERD_FONT_CANDIDATES = [
-  "JetBrainsMono Nerd Font",
-  "JetBrainsMono Nerd Font Mono",
-  "JetBrainsMonoNL Nerd Font",
-  "FiraCode Nerd Font",
-  "FiraCode Nerd Font Mono",
-  "MesloLGS NF",
-  "MesloLGM Nerd Font",
-  "Hack Nerd Font",
-  "Hack Nerd Font Mono",
-  "CaskaydiaCove Nerd Font",
-  "CaskaydiaMono Nerd Font",
-  "Iosevka Nerd Font",
-  "Iosevka Term Nerd Font",
-  "SauceCodePro Nerd Font",
-  "Hasklug Nerd Font",
-];
+import { IS_LINUX, IS_WINDOWS } from "@/lib/platform";
 
-const FALLBACK_CHAIN = '"JetBrains Mono", SFMono-Regular, Menlo, monospace';
+// VS Code's per-platform monospace defaults, with the bundled JetBrains Mono
+// in front so a fresh install renders identically on every OS. The browser
+// falls back per glyph through the list, so prompt icons missing from the
+// first font still resolve from any installed Nerd Font or system symbol font.
+const MAC_STACK = '"JetBrains Mono", Menlo, Monaco, "Courier New", monospace';
+const WINDOWS_STACK = '"JetBrains Mono", Consolas, "Courier New", monospace';
+const LINUX_STACK =
+  '"JetBrains Mono", "Droid Sans Mono", "DejaVu Sans Mono", monospace';
 
-let detected: string | null = null;
+export function defaultMonoFontFamily(): string {
+  if (IS_WINDOWS) return WINDOWS_STACK;
+  if (IS_LINUX) return LINUX_STACK;
+  return MAC_STACK;
+}
+
+const GENERIC_FAMILIES = new Set([
+  "monospace",
+  "ui-monospace",
+  "sans-serif",
+  "serif",
+  "system-ui",
+]);
+
+// Canvas font shorthand (used by the WebGL atlas) rejects unquoted family
+// names containing spaces, so quote anything that is not a plain identifier
+// or a generic family keyword.
+export function normalizeFontFamilies(input: string): string[] {
+  return input
+    .split(",")
+    .map((raw) => {
+      const name = raw.trim().replace(/^["']+|["']+$/g, "").trim();
+      if (!name) return "";
+      if (GENERIC_FAMILIES.has(name.toLowerCase())) return name.toLowerCase();
+      return /^[A-Za-z][\w-]*$/.test(name) ? name : `"${name}"`;
+    })
+    .filter(Boolean);
+}
+
+export function buildFontStack(pref: string, defaults: string): string {
+  const families = normalizeFontFamilies(pref);
+  if (families.length === 0) return defaults;
+  return `${families.join(", ")}, ${defaults}`;
+}
+
+// Empty preference means the platform default stack; a user-set font is always
+// backed by the default stack so a typo or uninstalled font never breaks the
+// terminal.
+export function resolveMonoFontFamily(pref: string): string {
+  return buildFontStack(pref, defaultMonoFontFamily());
+}
+
 let monoReady: Promise<void> | null = null;
 
 export function ensureMonoFontsLoaded(): Promise<void> {
@@ -32,24 +64,4 @@ export function ensureMonoFontsLoaded(): Promise<void> {
     document.fonts.load('700 14px "JetBrains Mono"'),
   ]).then(() => undefined);
   return monoReady;
-}
-
-export function detectMonoFontFamily(): string {
-  if (detected) return detected;
-  if (typeof document === "undefined" || !document.fonts) {
-    detected = FALLBACK_CHAIN;
-    return detected;
-  }
-  for (const f of NERD_FONT_CANDIDATES) {
-    try {
-      if (document.fonts.check(`12px "${f}"`)) {
-        detected = `"${f}", ${FALLBACK_CHAIN}`;
-        return detected;
-      }
-    } catch {
-      // Some browsers throw on invalid font shorthand; ignore.
-    }
-  }
-  detected = FALLBACK_CHAIN;
-  return detected;
 }

@@ -1,4 +1,4 @@
-import { detectMonoFontFamily } from "@/lib/fonts";
+import { resolveMonoFontFamily } from "@/lib/fonts";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { buildTerminalTheme } from "@/styles/terminalTheme";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -172,7 +172,7 @@ function bgActive(
 function termOptions() {
   const prefs = usePreferencesStore.getState();
   return {
-    fontFamily: prefs.terminalFontFamily || detectMonoFontFamily(),
+    fontFamily: resolveMonoFontFamily(prefs.terminalFontFamily),
     letterSpacing: prefs.terminalLetterSpacing,
     fontSize: Math.max(4, Math.round(prefs.terminalFontSize * prefs.zoomLevel)),
     theme: buildTerminalTheme(),
@@ -181,6 +181,11 @@ function termOptions() {
     cursorInactiveStyle: "outline" as const,
     scrollback: prefs.terminalScrollback,
     allowProposedApi: true,
+    // VS Code defaults: pixel-perfect box drawing / powerline glyphs and
+    // rescaling of overlapping ambiguous-width glyphs (Nerd Font, powerline
+    // and emoji ranges are excluded by xterm itself).
+    customGlyphs: true,
+    rescaleOverlappingGlyphs: true,
     minimumContrastRatio: bgActive(prefs) ? MCR_BG_ACTIVE : MCR_BG_INACTIVE,
   };
 }
@@ -833,7 +838,7 @@ export function applyLetterSpacing(spacing: number): void {
 }
 
 export function applyFontFamily(family: string): void {
-  const resolved = family || detectMonoFontFamily();
+  const resolved = resolveMonoFontFamily(family);
   for (const slot of slots) {
     if (slot.term.options.fontFamily === resolved) continue;
     slot.term.options.fontFamily = resolved;
