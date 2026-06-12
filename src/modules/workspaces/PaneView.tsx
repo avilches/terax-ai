@@ -1,12 +1,13 @@
 import { useDroppable, useDndMonitor } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { PaneTabBar } from "./PaneTabBar";
 import { PanelContent } from "./PanelContent";
 import type { PanelCallbacks } from "./PanelContent";
 import type { PaneNode } from "./lib/types";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { useTheme } from "@/modules/theme";
+import { subscribeToPool, poolSlotStats } from "@/modules/terminal";
 
 type Props = {
   pane: PaneNode;
@@ -90,6 +91,11 @@ export function PaneView({
 
   const activePanel = pane.panels.find((p) => p.id === pane.activePanelId);
 
+  const poolStats = useSyncExternalStore(subscribeToPool, poolSlotStats);
+  const activeIsGpu =
+    activePanel?.kind === "terminal" &&
+    poolStats.some((s) => s.leafId === activePanel.id && s.webgl);
+
 
   useDndMonitor({
     onDragStart: (event) => {
@@ -123,7 +129,10 @@ export function PaneView({
       onFocus={handleFocus}
     >
       {DEBUG_PANE_SIZE && (
-        <div className="pointer-events-none absolute right-1 top-8 z-50 rounded bg-black/80 px-1.5 py-1 font-mono text-[10px] leading-tight text-white">
+        <div className={cn(
+          "pointer-events-none absolute right-1 top-8 z-50 rounded bg-black/80 px-1.5 py-1 font-mono text-[10px] leading-tight text-white",
+          activeIsGpu ? "ring-1 ring-blue-500" : "",
+        )}>
           <div>{paneSize.w}&times;{paneSize.h}px</div>
           <div>min {splitLimit.width}&times;{splitLimit.height}</div>
           <div className={tooNarrow ? "text-red-400" : "text-green-400"}>w: {tooNarrow ? "NO SPLIT" : "ok"}</div>

@@ -11,3 +11,4 @@ export {
   writeToSession,
 } from "./lib/useTerminalSession";
 export { useTerminalFileDrop } from "./lib/useTerminalFileDrop";
+export { subscribeToPool, poolSlotStats } from "./lib/rendererPool";
