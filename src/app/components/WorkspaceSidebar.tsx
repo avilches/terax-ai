@@ -17,7 +17,7 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-type WorkspaceItem = { id: string; title: string; kind: string };
+type WorkspaceItem = { id: string; title: string; kind: string; cwd?: string };
 
 export type WorkspaceSidebarProps = {
   workspaces: WorkspaceItem[];
@@ -63,7 +63,7 @@ function SortableWorkspaceItem({
     <button
       ref={setNodeRef}
       type="button"
-      title={ws.title || ws.kind}
+      title={ws.cwd ? `${ws.title || ws.kind}: ${ws.cwd}` : (ws.title || ws.kind)}
       onClick={() => onSelect(ws.id)}
       className={cn(
         "flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-semibold transition-all select-none",

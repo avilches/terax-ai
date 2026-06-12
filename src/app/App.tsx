@@ -966,7 +966,7 @@ export default function App() {
           <div className="flex min-h-0 flex-1">
             {/* LEFT: 52px workspace sidebar */}
             <WorkspaceSidebar
-              workspaces={workspaces.map((w) => ({ id: w.id, title: w.title, kind: "terminal" }))}
+              workspaces={workspaces.map((w) => ({ id: w.id, title: w.title, kind: "terminal", cwd: w.cwd }))}
               activeId={activeWorkspaceId}
               onSelect={setActiveWorkspaceId}
               onNew={() => addWorkspace(home ?? undefined)}
