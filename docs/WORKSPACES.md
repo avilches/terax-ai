@@ -188,6 +188,23 @@ re-shown terminal after a workspace switch may reuse the still-warm slot.
 
 ---
 
+## Tab bar overflow scroll
+
+When a pane has many panels and is narrow, tabs overflow the `PaneTabBar`. Two scroll behaviors keep
+the active tab visible:
+
+- **Active tab auto-scroll**: whenever `activePanelId` changes, the container scrolls the minimum
+  amount to bring the active tab into view (`scrollBy` with `behavior: 'auto'`). Skipped if the
+  user is currently browsing with the wheel (see below).
+- **Wheel scroll with snap-back**: the container registers a native (non-React) `wheel` listener
+  with `{ passive: false }` so `preventDefault()` can suppress vertical page scroll and redirect
+  the delta to `scrollLeft`. After 800 ms of wheel idle, a debounced callback scrolls the active
+  tab back into view with `behavior: 'smooth'`. The listener is native (not a React `onWheel`) to
+  guarantee `passive: false`; React synthetic wheel events are passive and cannot call
+  `preventDefault()` reliably in WebKit/Tauri.
+
+---
+
 ## Drag-and-drop (panel reordering and splitting)
 
 Tab drag-and-drop uses `@dnd-kit/core` v6.3.1 (`DndContext` in `WorkspaceView`).
