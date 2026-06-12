@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildFontStack, normalizeFontFamilies } from "./fonts";
+import {
+  buildFontStack,
+  defaultMonoFontFamily,
+  normalizeFontFamilies,
+} from "./fonts";
 
 const DEFAULTS = '"JetBrains Mono", Menlo, Monaco, "Courier New", monospace';
 
@@ -51,6 +55,14 @@ describe("buildFontStack", () => {
   it("prepends a full user list to the default stack", () => {
     expect(buildFontStack("Fira Code, Hack", DEFAULTS)).toBe(
       `"Fira Code", Hack, ${DEFAULTS}`,
+    );
+  });
+});
+
+describe("defaultMonoFontFamily", () => {
+  it("ends with the bundled symbols font before the generic fallback", () => {
+    expect(defaultMonoFontFamily()).toMatch(
+      /"Symbols Nerd Font Mono", monospace$/,
     );
   });
 });

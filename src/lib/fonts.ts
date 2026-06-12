@@ -4,10 +4,12 @@ import { IS_LINUX, IS_WINDOWS } from "@/lib/platform";
 // in front so a fresh install renders identically on every OS. The browser
 // falls back per glyph through the list, so prompt icons missing from the
 // first font still resolve from any installed Nerd Font or system symbol font.
-const MAC_STACK = '"JetBrains Mono", Menlo, Monaco, "Courier New", monospace';
-const WINDOWS_STACK = '"JetBrains Mono", Consolas, "Courier New", monospace';
+const MAC_STACK =
+  '"JetBrains Mono", Menlo, Monaco, "Courier New", "Symbols Nerd Font Mono", monospace';
+const WINDOWS_STACK =
+  '"JetBrains Mono", Consolas, "Courier New", "Symbols Nerd Font Mono", monospace';
 const LINUX_STACK =
-  '"JetBrains Mono", "Droid Sans Mono", "DejaVu Sans Mono", monospace';
+  '"JetBrains Mono", "Droid Sans Mono", "DejaVu Sans Mono", "Symbols Nerd Font Mono", monospace';
 
 export function defaultMonoFontFamily(): string {
   if (IS_WINDOWS) return WINDOWS_STACK;
@@ -62,6 +64,7 @@ export function ensureMonoFontsLoaded(): Promise<void> {
   monoReady = Promise.allSettled([
     document.fonts.load('400 14px "JetBrains Mono"'),
     document.fonts.load('700 14px "JetBrains Mono"'),
+    document.fonts.load('12px "Symbols Nerd Font Mono"', ""),
   ]).then(() => undefined);
   return monoReady;
 }
