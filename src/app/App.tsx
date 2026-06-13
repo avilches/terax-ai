@@ -1036,7 +1036,7 @@ export default function App() {
                         openPanel(wsId, paneId, {
                           id: crypto.randomUUID(),
                           kind: "terminal",
-                          cwd: ws?.cwd,
+                          cwd: activeCwd ?? ws?.cwd,
                         });
                       }}
                       onSplitTerminalRight={(wsId, paneId) => {
@@ -1047,7 +1047,7 @@ export default function App() {
                         const el = document.querySelector<HTMLElement>(`[data-pane-id="${paneId}"]`);
                         if (!el || el.getBoundingClientRect().width < paneSplitLimit.width) return;
                         const newPaneId = splitPane(wsId, paneId, "horizontal");
-                        openPanel(wsId, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: ws.cwd });
+                        openPanel(wsId, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeCwd ?? ws.cwd });
                       }}
                       onSplitTerminalDown={(wsId, paneId) => {
                         const { paneSplitLimit, workspacePaneLimit } = usePreferencesStore.getState();
@@ -1057,7 +1057,7 @@ export default function App() {
                         const el = document.querySelector<HTMLElement>(`[data-pane-id="${paneId}"]`);
                         if (!el || el.getBoundingClientRect().height < paneSplitLimit.height) return;
                         const newPaneId = splitPane(wsId, paneId, "vertical");
-                        openPanel(wsId, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: ws.cwd });
+                        openPanel(wsId, newPaneId, { id: crypto.randomUUID(), kind: "terminal", cwd: activeCwd ?? ws.cwd });
                       }}
                       onNewBrowser={(wsId, paneId) => {
                         const panelId = crypto.randomUUID();
