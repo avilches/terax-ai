@@ -57,6 +57,7 @@ import {
   useWorkspaces,
   WorkspaceView,
 } from "@/modules/workspaces";
+import { WorkspaceDndProvider } from "@/modules/workspaces/WorkspaceDndProvider";
 import type { SearchAddon } from "@xterm/addon-search";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -101,6 +102,7 @@ export default function App() {
     movePanel,
     reorderPanel,
     splitPaneAndPlace,
+    splitPaneAndOpenFile,
     openPanel,
     activatePanel,
     closePanel,
@@ -974,6 +976,15 @@ export default function App() {
             />
 
             {/* CENTER + TOOL PANEL: resizable, side configurable */}
+            <WorkspaceDndProvider
+              workspaces={workspaces}
+              activeWorkspaceId={activeWorkspaceId}
+              onMovePanel={movePanel}
+              onReorderPanel={reorderPanel}
+              onSplitPaneAndPlace={splitPaneAndPlace}
+              onSplitPaneAndOpenFile={splitPaneAndOpenFile}
+              onOpenPanel={openPanel}
+            >
             <ResizablePanelGroup
               orientation="horizontal"
               className="min-h-0 flex-1"
@@ -1089,9 +1100,6 @@ export default function App() {
                         setTimeout(() => previewHandles.current.get(panelId)?.focusAddressBar(), 0);
                       }}
                       onDividerChange={(wsId, splitId, pos) => setPaneDivider(wsId, splitId, pos)}
-                      onMovePanel={movePanel}
-                      onReorderPanel={reorderPanel}
-                      onSplitPaneAndPlace={splitPaneAndPlace}
                       callbacks={panelCallbacks}
                     />
                   </div>
@@ -1143,6 +1151,7 @@ export default function App() {
                 </>
               )}
             </ResizablePanelGroup>
+            </WorkspaceDndProvider>
           </div>
 
           {!zenMode && (
