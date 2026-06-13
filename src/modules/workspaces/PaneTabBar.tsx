@@ -131,15 +131,11 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activePanelIdRef = useRef(activePanelId);
-  const paneFocusedRef = useRef(paneFocused);
-  const isWorkspaceActiveRef = useRef(isWorkspaceActive);
   const userScrolledRef = useRef(false);
   const mouseLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mouseInsideRef = useRef(true);
 
   useEffect(() => { activePanelIdRef.current = activePanelId; });
-  useEffect(() => { paneFocusedRef.current = paneFocused; });
-  useEffect(() => { isWorkspaceActiveRef.current = isWorkspaceActive; });
 
   const scrollActiveIntoView = (behavior: ScrollBehavior = 'auto') => {
     const container = scrollContainerRef.current;
@@ -175,10 +171,8 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
       if (!mouseInsideRef.current && !mouseLeaveTimerRef.current) {
         mouseLeaveTimerRef.current = setTimeout(() => {
           mouseLeaveTimerRef.current = null;
-          if (paneFocusedRef.current && isWorkspaceActiveRef.current) {
-            userScrolledRef.current = false;
-            scrollActiveIntoView('smooth');
-          }
+          userScrolledRef.current = false;
+          scrollActiveIntoView('smooth');
         }, 5000);
       }
     };
@@ -189,33 +183,15 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
     };
   }, []);
 
-  // Snap back immediately when this pane or workspace loses focus
+  // Snap back when the panel list changes (tab opened or closed)
   useEffect(() => {
-    if (!userScrolledRef.current) return;
-    if (!paneFocused || !isWorkspaceActive) {
-      userScrolledRef.current = false;
-      if (mouseLeaveTimerRef.current) {
-        clearTimeout(mouseLeaveTimerRef.current);
-        mouseLeaveTimerRef.current = null;
-      }
-      scrollActiveIntoView('smooth');
+    userScrolledRef.current = false;
+    if (mouseLeaveTimerRef.current) {
+      clearTimeout(mouseLeaveTimerRef.current);
+      mouseLeaveTimerRef.current = null;
     }
-  }, [paneFocused, isWorkspaceActive]);
-
-  // Snap back when the OS window loses focus
-  useEffect(() => {
-    const handleBlur = () => {
-      if (!userScrolledRef.current) return;
-      userScrolledRef.current = false;
-      if (mouseLeaveTimerRef.current) {
-        clearTimeout(mouseLeaveTimerRef.current);
-        mouseLeaveTimerRef.current = null;
-      }
-      scrollActiveIntoView('smooth');
-    };
-    window.addEventListener('blur', handleBlur);
-    return () => window.removeEventListener('blur', handleBlur);
-  }, []);
+    scrollActiveIntoView('auto');
+  }, [panels.length]);
 
   useDndMonitor({
     onDragStart() {
@@ -271,10 +247,8 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
         if (mouseLeaveTimerRef.current) clearTimeout(mouseLeaveTimerRef.current);
         mouseLeaveTimerRef.current = setTimeout(() => {
           mouseLeaveTimerRef.current = null;
-          if (paneFocusedRef.current && isWorkspaceActiveRef.current) {
-            userScrolledRef.current = false;
-            scrollActiveIntoView('smooth');
-          }
+          userScrolledRef.current = false;
+          scrollActiveIntoView('smooth');
         }, 5000);
       }}
       onPointerDown={(e) => {
