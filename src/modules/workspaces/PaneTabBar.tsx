@@ -189,6 +189,34 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
     };
   }, []);
 
+  // Snap back immediately when this pane or workspace loses focus
+  useEffect(() => {
+    if (!userScrolledRef.current) return;
+    if (!paneFocused || !isWorkspaceActive) {
+      userScrolledRef.current = false;
+      if (mouseLeaveTimerRef.current) {
+        clearTimeout(mouseLeaveTimerRef.current);
+        mouseLeaveTimerRef.current = null;
+      }
+      scrollActiveIntoView('smooth');
+    }
+  }, [paneFocused, isWorkspaceActive]);
+
+  // Snap back when the OS window loses focus
+  useEffect(() => {
+    const handleBlur = () => {
+      if (!userScrolledRef.current) return;
+      userScrolledRef.current = false;
+      if (mouseLeaveTimerRef.current) {
+        clearTimeout(mouseLeaveTimerRef.current);
+        mouseLeaveTimerRef.current = null;
+      }
+      scrollActiveIntoView('smooth');
+    };
+    window.addEventListener('blur', handleBlur);
+    return () => window.removeEventListener('blur', handleBlur);
+  }, []);
+
   useDndMonitor({
     onDragStart() {
       const container = scrollContainerRef.current;
