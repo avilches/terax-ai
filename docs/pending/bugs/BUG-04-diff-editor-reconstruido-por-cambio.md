@@ -13,7 +13,7 @@ Terax es un emulador de terminal open-source: backend Tauri 2 + Rust (portable-p
 Cambiar el tema con un diff grande abierto congela el frame; abrir diffs reconstruye el state. Paron perceptible en ficheros de cientos de KB.
 
 ## Fix
-Se resuelve de forma natural migrando a `MergeView` (ver `review/features/F1-diff-side-by-side.md`): gestionar los docs via `dispatch` y el tema via un `Compartment` reconfigurable, sin recrear el `EditorState`. Si se mantiene `unifiedMergeView` temporalmente, mover `themeExt` a un compartment para que cambiar de tema solo dispare un `reconfigure` en lugar de reconstruir todo el state.
+Se resuelve de forma natural migrando a `MergeView` (ver `docs/pending/features/F1-diff-side-by-side.md`): gestionar los docs via `dispatch` y el tema via un `Compartment` reconfigurable, sin recrear el `EditorState`. Si se mantiene `unifiedMergeView` temporalmente, mover `themeExt` a un compartment para que cambiar de tema solo dispare un `reconfigure` en lugar de reconstruir todo el state.
 
 ## Criterios de aceptacion
 - Cambiar de tema con un diff grande abierto no reconstruye el `EditorState` (sin paron de frame perceptible).

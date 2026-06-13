@@ -16,7 +16,7 @@ Teclear rapido en un repo grande dispara varios scans solapados, cada uno hasta 
 Repro: abrir la command palette / busqueda de contenido en un repo grande, teclear un termino largo rapido. Observar varios traversals de ripgrep corriendo en paralelo hasta completar, aunque solo el ultimo importa.
 
 ## Fix
-Pasar un `AbortSignal` a traves de `run(term, signal)` y, en el cleanup del effect, invocar el path de cancelacion de Rust (notificar al generation counter / comando de cancelacion) para abortar el traversal en vuelo. Ver spec ampliada en `review/improvements/M4-cancelacion-busqueda-ipc.md`.
+Pasar un `AbortSignal` a traves de `run(term, signal)` y, en el cleanup del effect, invocar el path de cancelacion de Rust (notificar al generation counter / comando de cancelacion) para abortar el traversal en vuelo. Ver spec ampliada en `docs/pending/improvements/M4-cancelacion-busqueda-ipc.md`.
 
 ## Criterios de aceptacion
 - Cambiar el termino de busqueda cancela el traversal anterior antes (o al inicio) de lanzar el nuevo.

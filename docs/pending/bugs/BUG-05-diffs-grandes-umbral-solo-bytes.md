@@ -13,7 +13,7 @@ El fallback a patch solo se activa cuando un lado supera 256 KB en bytes, pero e
 Un fichero minified o lockfile de ~200 KB dispara un diff sincrono que bloquea el render. El umbral por bytes es un proxy pobre del coste real, que escala con el numero de lineas y de cambios.
 
 ## Fix
-Anadir un umbral por lineas ademas del de bytes: contar `\n` sin materializar el array de lineas, y caer al `fallback_patch` cuando supere ~5-10k lineas. Idealmente, mover el calculo del diff a un Web Worker (ver `review/improvements/M5-diff-grandes-worker.md`).
+Anadir un umbral por lineas ademas del de bytes: contar `\n` sin materializar el array de lineas, y caer al `fallback_patch` cuando supere ~5-10k lineas. Idealmente, mover el calculo del diff a un Web Worker (ver `docs/pending/improvements/M5-diff-grandes-worker.md`).
 
 ## Criterios de aceptacion
 - Un fichero por debajo del umbral de bytes pero con muchas lineas (minified/lockfile) cae al fallback en lugar de bloquear el render.

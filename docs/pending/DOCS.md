@@ -44,14 +44,14 @@ Verificación de que `AGENTS.md`, `CLAUDE.md`, `docs/*` y la documentación raí
 - **Documento:** `docs/ARCHITECTURE.md:123`.
 - **Afirma:** *"You can stage / unstage individual files or hunks."*
 - **Realidad:** No hay staging por hunks (búsqueda de `hunk|stage_hunk|apply.*patch` en `git/` y `source-control/` vacía). Solo `git_stage`/`git_unstage` por fichero.
-- **Acción:** Quitar "or hunks" **o** implementarlo (ver `review/features/F2-stage-unstage-por-hunk.md`).
+- **Acción:** Quitar "or hunks" **o** implementarlo (ver `docs/pending/features/F2-stage-unstage-por-hunk.md`).
 
 ### D7 [low] El diff es unificado (inline), no side-by-side; la doc debería precisarlo
 
 - **Documento:** `docs/ARCHITECTURE.md:123,195,261`.
 - **Afirma:** describe el diff genéricamente como "the CodeMirror merge extension" y "diff decorations". No afirma side-by-side, así que técnicamente no hay mentira en la doc. Pero el código usa `unifiedMergeView` (inline, una columna), no `MergeView` side-by-side.
 - **Realidad:** `src/modules/editor/GitDiffPane.tsx:5,207` usa `unifiedMergeView`.
-- **Acción:** Precisar en la doc "unified (inline) merge view". Nota importante: el doble panel side-by-side es un objetivo de producto del usuario que hoy no está implementado, ver `review/features/F1-diff-side-by-side.md`.
+- **Acción:** Precisar en la doc "unified (inline) merge view". Nota importante: el doble panel side-by-side es un objetivo de producto del usuario que hoy no está implementado, ver `docs/pending/features/F1-diff-side-by-side.md`.
 
 ### D8 [low] `docs/IPC.md` no documenta `restore_window_geometry`
 

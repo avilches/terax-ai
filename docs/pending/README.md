@@ -13,7 +13,7 @@ Todo está en ficheros markdown autocontenidos y accionables por un agente de fo
 - **features/** - una spec accionable por feature (F1-F6).
 - **improvements/** - una spec accionable por mejora (M1-M7).
 
-Para lanzar un agente sobre un item concreto basta con apuntarlo al fichero, por ejemplo: "implementa `review/bugs/BUG-02-diff-no-normaliza-crlf.md`" o "implementa `review/features/F1-diff-side-by-side.md`".
+Para lanzar un agente sobre un item concreto basta con apuntarlo al fichero, por ejemplo: "implementa `docs/pending/bugs/BUG-02-diff-no-normaliza-crlf.md`" o "implementa `docs/pending/features/F1-diff-side-by-side.md`".
 
 ## Los 2 hallazgos que importan
 
@@ -48,6 +48,11 @@ Para lanzar un agente sobre un item concreto basta con apuntarlo al fichero, por
 2. **Hacer la feature estrella real:** BUG-02 (CRLF) → F1 (side-by-side) → F3 (navegación) → F2 (stage por hunk). Apoyar con M3 (hunks backend) y M5 (grandes).
 3. **Rendimiento y memoria:** M1 (memoización), M6 (reaping), M2 (agents perezoso), BUG-08/10.
 4. **Pulido continuo:** M7 quick wins y los bugs low.
+
+## Decisiones abiertas
+
+- **F4 (deny-list / autorización fs): RESUELTA.** Se decidió no implementarla y ajustar la documentación. El modelo de amenaza del fork (sin agentes AI, boundary en `capabilities/default.json`, el terminal ya da shell completo) la vuelve innecesaria. Detalle en `docs/ARCHITECTURE.md §4.2` y en el comentario antes de `fs_read_file` en `src-tauri/src/modules/fs/file.rs`. No reabrir salvo petición explícita.
+- **M2 (módulo agents): pendiente de confirmar con el usuario.** ¿Hacer la superficie frontend de agents perezosa pero disponible, o apagada por defecto? Dada la filosofía no-agentes del fork conviene confirmarlo antes de tocar. Spec en [M2](improvements/M2-lazy-modulo-agents.md).
 
 ## Estado verificado (lo que NO hay que tocar)
 

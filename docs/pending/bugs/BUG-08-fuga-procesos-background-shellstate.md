@@ -13,7 +13,7 @@ Terax es un emulador de terminal open-source: backend Tauri 2 + Rust (portable-p
 Arrancar y matar N dev-servers deja N buffers residentes de hasta 4 MiB cada uno. Contradice "ultraligero / cada feature no usada consume cero recursos". Repro: lanzar varios procesos background con `shell_bg_spawn`, matarlos con `shell_bg_kill`, observar que el mapa `ShellState.bg` sigue conteniendo las entradas y la RAM no se libera.
 
 ## Fix
-Anadir `shell_bg_remove(handle)` y que `shell_bg_kill` elimine la entrada del mapa tras matar el hijo. Reapear entradas en estado exited en `shell_bg_list`/`shell_bg_logs` con un TTL. Spec ampliada en `review/improvements/M6-reaping-bg-procs-y-registry.md`.
+Anadir `shell_bg_remove(handle)` y que `shell_bg_kill` elimine la entrada del mapa tras matar el hijo. Reapear entradas en estado exited en `shell_bg_list`/`shell_bg_logs` con un TTL. Spec ampliada en `docs/pending/improvements/M6-reaping-bg-procs-y-registry.md`.
 
 ## Criterios de aceptacion
 - Tras `shell_bg_kill`, la entrada correspondiente desaparece del mapa `ShellState.bg` y su ring buffer se libera.

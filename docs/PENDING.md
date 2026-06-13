@@ -49,6 +49,7 @@ Bugs, features y mejoras identificadas pero no programadas. Ver detalles en `doc
 - [F3](pending/features/F3-navegacion-hunks.md) — Navegacion entre hunks
 - [F5](pending/features/F5-reabrir-tab-cerrado.md) — Reabrir tab cerrado
 - [F6](pending/features/F6-scrollback-persistente.md) — Scrollback persistente
+- [F7](pending/features/F7-tab-bar-style-en-settings.md) — Exponer el estilo de tab bar en Settings
 
 ## Mejoras (`docs/pending/improvements/`)
 

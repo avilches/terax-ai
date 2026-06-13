@@ -7,6 +7,7 @@
 - Cuando el usuario pide recordar una feature para mas adelante: añadirla a `docs/TODO.md`.
 - Cuando algo queda pendiente y el usuario decide no hacerlo ahora: añadirlo a `docs/PENDING.md` con referencia al fichero de detalle en `docs/pending/` (subdirectorios: `bugs/`, `features/`, `improvements/`).
 - Cuando el usuario pregunta "que queda por hacer": mostrar primero `docs/PENDING.md`, luego `docs/TODO.md`.
+- Al revisar lo pendiente, buscar tambien ficheros de handoff sueltos (p. ej. `HANDOFF-*.md` en la raiz o en `docs/`) por si el usuario quiere continuar con alguno. Listarlos, decir de que trata cada uno, y ofrecer al usuario limpiarlos, unificarlos o mover su contenido vivo a `docs/PENDING.md` o `docs/TODO.md`. No borrar ni mover un handoff sin confirmacion del usuario.
 
 ### Estado mutable externo en React
 

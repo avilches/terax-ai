@@ -13,7 +13,7 @@ Cada `setTerminalPanelCwd` (cada cd, OSC 7) y cada `setTerminalRunningCommand` (
 Copia profunda + JSON IPC del estado completo de forma repetida. CPU/GC proporcional al tamano del arbol. Repro: abrir varios terminales, ejecutar comandos y hacer `cd` en ellos; observar serializaciones repetidas del estado completo de workspaces.
 
 ## Fix
-`runningCommand` es estado efimero que no necesita persistirse. Sacarlo del modelo persistido o, mejor, fuera del arbol `workspaces` (store separado `Map<panelId, cmd>`) para que no mute la identidad del arbol ni dispare persistencia. Spec en `review/improvements/M1-memoizacion-arbol-workspaces.md`.
+`runningCommand` es estado efimero que no necesita persistirse. Sacarlo del modelo persistido o, mejor, fuera del arbol `workspaces` (store separado `Map<panelId, cmd>`) para que no mute la identidad del arbol ni dispare persistencia. Spec en `docs/pending/improvements/M1-memoizacion-arbol-workspaces.md`.
 
 ## Criterios de aceptacion
 - Cambios en `runningCommand` no mutan la identidad del arbol `workspaces` ni disparan el effect de persistencia.

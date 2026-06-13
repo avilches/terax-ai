@@ -68,4 +68,4 @@ return () => view.destroy();
 - Depende de BUG-02 (CRLF) para que el side-by-side no sea ruido.
 - Habilita F2 (stage por hunk) y F3 (navegación de hunks).
 - M5 (diff en worker) para subir los umbrales.
-- Actualizar `docs/ARCHITECTURE.md:123` y `D7` en `review/DOCS.md`.
+- Actualizar `docs/ARCHITECTURE.md:123` y `D7` en `docs/pending/DOCS.md`.

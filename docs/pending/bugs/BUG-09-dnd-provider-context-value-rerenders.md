@@ -16,7 +16,7 @@ Mover el puntero durante un drag dispara un re-render del arbol entero en cada `
 ```ts
 const ctxValue = useMemo(() => ({ draggingItem, tabInsertPaneId }), [draggingItem, tabInsertPaneId]);
 ```
-y pasar `value={ctxValue}`. Considerar ademas separar `tabInsertPaneId` en su propio contexto para que sus cambios frecuentes no invaliden a los consumidores de `draggingItem`. Spec relacionada en `review/improvements/M1-memoizacion-arbol-workspaces.md`.
+y pasar `value={ctxValue}`. Considerar ademas separar `tabInsertPaneId` en su propio contexto para que sus cambios frecuentes no invaliden a los consumidores de `draggingItem`. Spec relacionada en `docs/pending/improvements/M1-memoizacion-arbol-workspaces.md`.
 
 ## Criterios de aceptacion
 - El value del contexto se memoiza con `useMemo` y solo cambia de referencia cuando cambian `draggingItem` o `tabInsertPaneId`.

@@ -15,7 +15,7 @@ Crecimiento monotono de memoria y coste lineal creciente por cada chequeo de aut
 Repro: navegar (cd) por muchos directorios distintos a lo largo de una sesion larga. Observar que el registry crece sin limite y que cada chequeo `is_authorized` recorre todos los roots.
 
 ## Fix
-Capar el registry con una politica LRU y consolidar roots ancestro/descendiente al insertar (si se inserta un ancestro de un root existente, colapsar; si se inserta un descendiente de un root existente, no anadir duplicado). Ver spec en `review/improvements/M6-reaping-bg-procs-y-registry.md`.
+Capar el registry con una politica LRU y consolidar roots ancestro/descendiente al insertar (si se inserta un ancestro de un root existente, colapsar; si se inserta un descendiente de un root existente, no anadir duplicado). Ver spec en `docs/pending/improvements/M6-reaping-bg-procs-y-registry.md`.
 
 ## Criterios de aceptacion
 - El registry tiene una cota maxima de entradas (LRU descarta las menos usadas).
