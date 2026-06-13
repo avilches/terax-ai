@@ -32,6 +32,11 @@ type Props = {
   onMovePanel: UseWorkspacesReturn["movePanel"];
   onReorderPanel: UseWorkspacesReturn["reorderPanel"];
   onSplitPaneAndPlace: UseWorkspacesReturn["splitPaneAndPlace"];
+  onSplitTerminalRight: (workspaceId: string, paneId: string) => void;
+  onSplitTerminalDown: (workspaceId: string, paneId: string) => void;
+  onNewBrowser: (workspaceId: string, paneId: string) => void;
+  onSplitBrowserRight: (workspaceId: string, paneId: string) => void;
+  onSplitBrowserDown: (workspaceId: string, paneId: string) => void;
   callbacks: PanelCallbacks;
 };
 
@@ -238,6 +243,11 @@ export function WorkspaceView({
               onFocusPane={rest.onFocusPane}
               onNewTerminal={rest.onNewTerminal}
               onDividerChange={rest.onDividerChange}
+              onSplitTerminalRight={rest.onSplitTerminalRight}
+              onSplitTerminalDown={rest.onSplitTerminalDown}
+              onNewBrowser={rest.onNewBrowser}
+              onSplitBrowserRight={rest.onSplitBrowserRight}
+              onSplitBrowserDown={rest.onSplitBrowserDown}
               callbacks={rest.callbacks}
             />
           </div>
