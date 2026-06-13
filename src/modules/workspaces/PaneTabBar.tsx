@@ -51,9 +51,12 @@ function DraggableTab({
       {...attributes}
       data-panel-id={panel.id}
       onClick={() => onActivate(panel.id)}
+      onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+      onAuxClick={(e) => { if (e.button === 1) { e.stopPropagation(); onClose(panel.id); } }}
       {...listeners}
       className={cn(
-        "group relative flex min-w-[100px] max-w-[200px] shrink-0 cursor-grab active:cursor-grabbing select-none touch-none items-center gap-1 px-1.5 text-[11px] transition-colors",
+        "group relative flex min-w-[100px] max-w-[200px] shrink-0 select-none touch-none items-center gap-1 px-1.5 text-[11px] transition-colors",
+        isThisDragging ? "cursor-grabbing" : "cursor-default",
         connected
           ? [
               "self-stretch border-r border-border/30",
@@ -128,9 +131,14 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activePanelIdRef = useRef(activePanelId);
+  const paneFocusedRef = useRef(paneFocused);
+  const isWorkspaceActiveRef = useRef(isWorkspaceActive);
+  const userScrolledRef = useRef(false);
   const userScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { activePanelIdRef.current = activePanelId; });
+  useEffect(() => { paneFocusedRef.current = paneFocused; });
+  useEffect(() => { isWorkspaceActiveRef.current = isWorkspaceActive; });
 
   const scrollActiveIntoView = (behavior: ScrollBehavior = 'auto') => {
     const container = scrollContainerRef.current;
@@ -149,7 +157,7 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
 
   // Scroll active tab into view when it changes (unless user is browsing with wheel)
   useEffect(() => {
-    if (userScrollTimerRef.current) return;
+    if (userScrolledRef.current) return;
     scrollActiveIntoView('auto');
   }, [activePanelId]);
 
