@@ -118,6 +118,8 @@ Supported shells: zsh (full), bash (full), fish (full), PowerShell 7+ (full), Po
 
 **Root follows active tab.** The explorer root tracks the working directory of the active terminal tab (derived from OSC 7). If you `cd ~/projects/foo` in a terminal, the explorer follows.
 
+**Drag to open.** Files (not directories) can be dragged from the explorer and dropped onto any pane drop zone or between tabs to open them as permanent editor tabs. Dropping on a directional zone (top/bottom/left/right) splits the target pane and opens the file in the new sub-pane. The drag experience is visually identical to dragging tabs between panes. See `WorkspaceDndProvider.tsx`.
+
 ### 3.4 Source control
 
 **Git status and staging.** The source control panel shows modified, staged, untracked, and conflicted files. You can stage / unstage individual files or hunks. The diff view uses the CodeMirror merge extension.
@@ -332,7 +334,8 @@ src/
     ├── header/                    — Top bar, inline search
     ├── statusbar/                 — CWD breadcrumb, workspace env selector
     ├── workspaces/                — Workspace/Pane/Panel model; useWorkspaces (source of truth),
-    │                                splitNode tree ops, WorkspaceView/SplitNodeView/PaneView/PanelContent
+    │                                splitNode tree ops, WorkspaceView/SplitNodeView/PaneView/PanelContent,
+    │                                WorkspaceDndProvider (DndContext + file/tab drag handlers)
     ├── sidebar/                   — SidebarViewId type (residual; side panels moved to RightPanel)
     ├── shortcuts/                 — Global keymap registry, useGlobalShortcuts
     ├── theme/                     — CSS variable engine, presets, custom themes, bg image

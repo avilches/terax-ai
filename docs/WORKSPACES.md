@@ -39,11 +39,13 @@ workspaces; clicking switches `activeWorkspaceId`.
 ## Render tree
 
 ```
-WorkspaceView           — DndContext wrapper; one per active+inactive workspace (absolute inset-0)
-  └── SplitNodeView     — recursive: renders split groups as ResizablePanelGroup, leaves as PaneView
-        └── PaneView    — one pane: tab bar + panel content area + drag drop zones
-              ├── PaneTabBar        — tab strip with DraggableTab per panel
-              └── PanelContent      — switches on panel.kind; mounts terminal, editor, etc.
+WorkspaceDndProvider    — DndContext wrapper; owns all drag state, handlers, and DragOverlay
+  ├── Explorer panel    — TreeRow uses useDraggable for file drag (files only, not directories)
+  └── WorkspaceView     — one per active+inactive workspace (absolute inset-0)
+        └── SplitNodeView     — recursive: renders split groups as ResizablePanelGroup, leaves as PaneView
+              └── PaneView    — one pane: tab bar + panel content area + drag drop zones
+                    ├── PaneTabBar        — tab strip with DraggableTab per panel
+                    └── PanelContent      — switches on panel.kind; mounts terminal, editor, etc.
 ```
 
 **All workspaces are always mounted.** Inactive workspaces are hidden with `opacity-0 invisible`
@@ -205,9 +207,22 @@ the active tab visible:
 
 ---
 
-## Drag-and-drop (panel reordering and splitting)
+## Drag-and-drop (panel reordering, splitting, and file open)
 
-Tab drag-and-drop uses `@dnd-kit/core` v6.3.1 (`DndContext` in `WorkspaceView`).
+Drag-and-drop uses `@dnd-kit/core` v6.3.1. The `DndContext` lives in `WorkspaceDndProvider`
+(`WorkspaceDndProvider.tsx`), which wraps both the explorer panel and the workspace area so
+that file drags from the explorer can target pane drop zones.
+
+### Drag item type
+
+```typescript
+type DraggingItem =
+  | { kind: 'panel'; panel: Panel; workspaceId: string }
+  | { kind: 'file'; path: string };
+```
+
+`WorkspaceDndProvider` exposes `{ draggingItem, tabInsertPaneId }` via `useWorkspaceDnd()`.
+`WorkspaceView` reads from this context instead of owning drag state directly.
 
 ### Components
 
@@ -240,14 +255,20 @@ Tab drag-and-drop uses `@dnd-kit/core` v6.3.1 (`DndContext` in `WorkspaceView`).
   the tab will move there.
   Drag-drop splits are also blocked when the workspace already has `workspacePaneLimit` panes
   (configurable in `terax-settings.json`, default `8`).
-- `DragOverlay`: lightweight floating chip showing panel icon + title during drag. `dropAnimation:
-  null` to avoid fighting the layout reflow on drop.
+- `DragOverlay` (`WorkspaceDndProvider.tsx`): lightweight floating chip showing panel icon + title
+  for tab drags, or a file icon + basename for file drags. `dropAnimation: null` to avoid fighting
+  the layout reflow on drop.
+- `TreeRow` (`explorer/TreeRow.tsx`): `useDraggable({ id: 'file:<path>' })` — only enabled for
+  files, not directories. Applies `opacity-50` during drag, same as `DraggableTab`.
 
-### Drop resolution (`handleDragEnd` in `WorkspaceView.tsx`)
+### Drop resolution (`handleDragEnd` in `WorkspaceDndProvider.tsx`)
 
-Two zone ID formats are handled:
+The handler first classifies the drag by the `active.id` prefix: `file:` means a file drag from
+the explorer; any other ID is a panel (tab) drag.
 
-**`tab-insert:<panelId>:before|after`** - tab border drop zones for positional insertion:
+**Panel drag** — two zone ID formats:
+
+`tab-insert:<panelId>:before|after` - tab border drop zones for positional insertion:
 - `before`: insert at `indexOf(panelId)` in the target pane
 - `after`: insert at `indexOf(panelId) + 1`
 - Same pane: `reorderPanel(workspaceId, panelId, insertionIndex)` — reorders tabs using
@@ -255,10 +276,24 @@ Two zone ID formats are handled:
 - Different pane: `movePanel(workspaceId, panelId, targetPaneId, insertionIndex)` — moves tab to
   the target pane at the given position; source pane auto-collapses if it becomes empty
 
-**`zone:<paneId>:<direction>`** - pane-level drop zones:
+`zone:<paneId>:<direction>` - pane-level drop zones:
 - `center`: `movePanel(sourceWorkspaceId, panelId, targetPaneId)` — moves tab to end of another pane
 - directional zones: `splitPaneAndPlace(sourceWorkspaceId, targetPaneId, direction, panelId)` —
   splits the target pane and places the dragged panel in the new half
+
+**File drag** — the handler checks whether a panel with that path is already open in the active
+workspace. If it is, the existing panel is treated as a panel drag (move/reorder) so the tab moves
+to the drop location. If it is not open:
+
+| Drop target | Action |
+|---|---|
+| `zone:<paneId>:center` | `openPanel(wsId, paneId, editorPanel)` — appends permanent editor tab |
+| `tab-insert:<panelId>:before\|after` | `openPanel(wsId, paneId, editorPanel, index)` — inserts at position |
+| `zone:<paneId>:top\|bottom\|left\|right` | `splitPaneAndOpenFile(wsId, paneId, dir, path)` — splits pane, opens file in new sub-pane |
+
+All file-drag panels have `preview: false` (permanent tab) because the drag is an explicit intent.
+`splitPaneAndOpenFile` uses `splitPaneAndInsertPanel` (pure function in `splitNode.ts`) to perform
+the split and new-panel insertion atomically in a single state update.
 
 Both zone types coexist. Tab-border zones take priority when the pointer is over a tab bar (they are
 physically smaller and registered on top). Pane zones handle the content area and pane borders.
