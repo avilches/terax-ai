@@ -32,9 +32,11 @@ import { InlineInput } from "./InlineInput";
 import { copyToClipboard, revealInFinder } from "./lib/contextActions";
 import { fileIconUrl, folderIconUrl } from "./lib/iconResolver";
 import { COMPACT_CONTENT, COMPACT_ITEM } from "./lib/menuItemClass";
+import { useExplorerFileDrop } from "./lib/useExplorerFileDrop";
 import { useFileTree } from "./lib/useFileTree";
 import { useGitStatus } from "./lib/useGitStatus";
 import type { GitStatusCode } from "./lib/gitStatusUtils";
+import { cn } from "@/lib/utils";
 import { useGlobalShortcuts } from "@/modules/shortcuts";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import type { GitStatusSnapshot } from "@/lib/native";
@@ -233,6 +235,34 @@ export const FileExplorer = memo(
       tree.pendingCreate,
       lookupGitStatus,
     ]);
+
+    const isDirAt = useCallback(
+      (path: string): boolean | undefined => {
+        const idx = entryIndexByPath.get(path);
+        const row = idx !== undefined ? rows[idx] : undefined;
+        return row?.kind === "entry" ? row.isDir : undefined;
+      },
+      [entryIndexByPath, rows],
+    );
+
+    // OS file drops (copy from Finder/Explorer). Coexists with the terminal's
+    // own drop listener: each acts only on its own DOM region by hit-testing.
+    const { externalTargetDir } = useExplorerFileDrop({
+      rootPath,
+      isDir: isDirAt,
+      onCopied: tree.refresh,
+    });
+    const rootIsDropTarget =
+      externalTargetDir != null && externalTargetDir === rootPath;
+
+    // OS drops bypass @dnd-kit, so the per-row spring-open in TreeRow never
+    // fires for them; expand the hovered folder here instead.
+    useEffect(() => {
+      if (!externalTargetDir || externalTargetDir === rootPath) return;
+      if (tree.expanded.has(externalTargetDir)) return;
+      const id = window.setTimeout(() => tree.expand(externalTargetDir), 700);
+      return () => window.clearTimeout(id);
+    }, [externalTargetDir, rootPath, tree.expanded, tree.expand]);
 
     const rowActions = useMemo<RowActions>(
       () => ({
@@ -440,6 +470,7 @@ export const FileExplorer = memo(
               renameInProgress={renameInProgress}
               isSelected={selectedPath === row.path}
               isRenaming={row.kind === "rename"}
+              isExternalDropTarget={externalTargetDir === row.path}
               gitStatusCode={row.gitStatusCode}
               gitignored={gitDecorations && row.gitignored}
               onOpenFile={onOpenFile}
@@ -544,7 +575,12 @@ export const FileExplorer = memo(
             <ContextMenuTrigger asChild>
               <div
                 ref={scrollRef}
-                className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]"
+                data-explorer-drop=""
+                className={cn(
+                  "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]",
+                  rootIsDropTarget &&
+                    "rounded-sm ring-1 ring-inset ring-primary/50",
+                )}
               >
                 {pendingAtRoot ? (
                   <div
