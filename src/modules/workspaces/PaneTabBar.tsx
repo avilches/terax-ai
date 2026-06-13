@@ -4,6 +4,16 @@ import { panelIcon, panelTitle } from "./lib/panelTitle";
 import type { Panel } from "./lib/types";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { useEffect, useRef, useState } from "react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { getShortcutLabel } from "@/modules/shortcuts/shortcuts";
+import type { ShortcutId, KeyBinding } from "@/modules/shortcuts/shortcuts";
 
 type Props = {
   panels: Panel[];
@@ -14,6 +24,13 @@ type Props = {
   onActivate: (panelId: string) => void;
   onClose: (panelId: string) => void;
   onNewTerminal: () => void;
+  onCloseOtherPanels: (panelId: string) => void;
+  onCloseAllPanels: () => void;
+  onSplitTerminalRight: () => void;
+  onSplitTerminalDown: () => void;
+  onNewBrowser: () => void;
+  onSplitBrowserRight: () => void;
+  onSplitBrowserDown: () => void;
 };
 
 function DraggableTab({
@@ -24,8 +41,18 @@ function DraggableTab({
   isWorkspaceActive,
   insertionBefore,
   insertionAfter,
+  panelsCount,
   onActivate,
   onClose,
+  onCloseOtherPanels,
+  onCloseAllPanels,
+  onNewTerminal,
+  onSplitTerminalRight,
+  onSplitTerminalDown,
+  onNewBrowser,
+  onSplitBrowserRight,
+  onSplitBrowserDown,
+  shortcutLabels,
 }: {
   panel: Panel;
   activePanelId: string | null;
@@ -34,8 +61,18 @@ function DraggableTab({
   isWorkspaceActive: boolean;
   insertionBefore: boolean;
   insertionAfter: boolean;
+  panelsCount: number;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
+  onCloseOtherPanels: (panelId: string) => void;
+  onCloseAllPanels: () => void;
+  onNewTerminal: () => void;
+  onSplitTerminalRight: () => void;
+  onSplitTerminalDown: () => void;
+  onNewBrowser: () => void;
+  onSplitBrowserRight: () => void;
+  onSplitBrowserDown: () => void;
+  shortcutLabels: Record<string, string | null>;
 }) {
   const { attributes, listeners, setNodeRef, isDragging: isThisDragging } = useDraggable({ id: panel.id });
   const { setNodeRef: setBeforeRef } = useDroppable({ id: `tab-insert:${panel.id}:before`, disabled: !isWorkspaceActive });
@@ -46,87 +83,148 @@ function DraggableTab({
   const connected = tabBarStyle === "connected";
 
   return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      data-panel-id={panel.id}
-      onClick={() => onActivate(panel.id)}
-      onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
-      onAuxClick={(e) => { if (e.button === 1) { e.stopPropagation(); onClose(panel.id); } }}
-      {...listeners}
-      className={cn(
-        "group relative flex min-w-[100px] max-w-[200px] shrink-0 select-none touch-none items-center gap-1 px-1.5 text-[11px] transition-colors",
-        isThisDragging ? "cursor-grabbing" : "cursor-default",
-        connected
-          ? [
-              "self-stretch border-r border-border/30",
-              active
-                ? "bg-background text-foreground"
-                : "border-b border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-            ]
-          : [
-              "h-5 rounded",
-              active
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-            ],
-        isThisDragging && "opacity-40",
-      )}
-    >
-      {/* Droppable half-zones - coordinates-based, no pointer events needed */}
-      <div ref={setBeforeRef} className="pointer-events-none absolute inset-y-0 left-0 w-1/2" />
-      <div ref={setAfterRef} className="pointer-events-none absolute inset-y-0 right-0 w-1/2" />
-
-      {insertionBefore && (
-        <div className="pointer-events-none absolute inset-y-1 left-0 z-20 w-0.5 rounded-full bg-tab-focus-indicator" />
-      )}
-      {insertionAfter && (
-        <div className="pointer-events-none absolute inset-y-1 right-0 z-20 w-0.5 rounded-full bg-tab-focus-indicator" />
-      )}
-
-      {active && paneFocused && (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
         <div
-          className={cn("absolute inset-x-0 top-0 bg-tab-focus-indicator", connected ? "h-[1.5px]" : "h-0.5 rounded-t")}
-        />
-      )}
-      <span className="shrink-0 opacity-70">{panelIcon(panel, workspaceId)}</span>
-      <span
-        className={cn(
-          "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap",
-          panel.kind === "terminal" && panel.runningCommand && "text-center",
-        )}
-        style={{ direction: panel.kind === "terminal" && !panel.runningCommand ? "rtl" : "ltr" }}
-        title={
-          panel.kind === "terminal"
-            ? panel.runningCommand
-              ? `${title} · ${panel.cwd?.replace(/\/$/, "") ?? ""}`
-              : (panel.cwd?.replace(/\/$/, "") ?? "shell")
-            : title
-        }
-      >
-        {title}
-      </span>
-      {panel.kind === "editor" && panel.dirty && (
-        <span className="shrink-0 text-[8px] text-primary">●</span>
-      )}
-      <button
-        type="button"
-        className="ml-0.5 flex size-[16px] shrink-0 cursor-pointer items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100 hover:bg-muted"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose(panel.id);
-        }}
-        title="Close panel"
-      >
-        <span className="text-[13px] leading-none">×</span>
-      </button>
-    </div>
+          ref={setNodeRef}
+          {...attributes}
+          data-panel-id={panel.id}
+          onClick={() => onActivate(panel.id)}
+          onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+          onAuxClick={(e) => { if (e.button === 1) { e.stopPropagation(); onClose(panel.id); } }}
+          {...listeners}
+          className={cn(
+            "group relative flex min-w-[100px] max-w-[200px] shrink-0 select-none touch-none items-center gap-1 px-1.5 text-[11px] transition-colors",
+            isThisDragging ? "cursor-grabbing" : "cursor-default",
+            connected
+              ? [
+                  "self-stretch border-r border-border/30",
+                  active
+                    ? "bg-background text-foreground"
+                    : "border-b border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                ]
+              : [
+                  "h-5 rounded",
+                  active
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                ],
+            isThisDragging && "opacity-40",
+          )}
+        >
+          {/* Droppable half-zones - coordinates-based, no pointer events needed */}
+          <div ref={setBeforeRef} className="pointer-events-none absolute inset-y-0 left-0 w-1/2" />
+          <div ref={setAfterRef} className="pointer-events-none absolute inset-y-0 right-0 w-1/2" />
+
+          {insertionBefore && (
+            <div className="pointer-events-none absolute inset-y-1 left-0 z-20 w-0.5 rounded-full bg-tab-focus-indicator" />
+          )}
+          {insertionAfter && (
+            <div className="pointer-events-none absolute inset-y-1 right-0 z-20 w-0.5 rounded-full bg-tab-focus-indicator" />
+          )}
+
+          {active && paneFocused && (
+            <div
+              className={cn("absolute inset-x-0 top-0 bg-tab-focus-indicator", connected ? "h-[1.5px]" : "h-0.5 rounded-t")}
+            />
+          )}
+          <span className="shrink-0 opacity-70">{panelIcon(panel, workspaceId)}</span>
+          <span
+            className={cn(
+              "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap",
+              panel.kind === "terminal" && panel.runningCommand && "text-center",
+            )}
+            style={{ direction: panel.kind === "terminal" && !panel.runningCommand ? "rtl" : "ltr" }}
+            title={
+              panel.kind === "terminal"
+                ? panel.runningCommand
+                  ? `${title} · ${panel.cwd?.replace(/\/$/, "") ?? ""}`
+                  : (panel.cwd?.replace(/\/$/, "") ?? "shell")
+                : title
+            }
+          >
+            {title}
+          </span>
+          {panel.kind === "editor" && panel.dirty && (
+            <span className="shrink-0 text-[8px] text-primary">●</span>
+          )}
+          <button
+            type="button"
+            className="ml-0.5 flex size-[16px] shrink-0 cursor-pointer items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100 hover:bg-muted"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose(panel.id);
+            }}
+            title="Close panel"
+          >
+            <span className="text-[13px] leading-none">×</span>
+          </button>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onSelect={() => onClose(panel.id)}>
+          Close Tab
+          {shortcutLabels["tab.close"] && (
+            <ContextMenuShortcut>{shortcutLabels["tab.close"]}</ContextMenuShortcut>
+          )}
+        </ContextMenuItem>
+        <ContextMenuItem
+          disabled={panelsCount <= 1}
+          onSelect={() => onCloseOtherPanels(panel.id)}
+        >
+          Close Other Tabs
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onCloseAllPanels}>
+          Close All Tabs
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={onNewTerminal}>
+          New Terminal Tab
+          {shortcutLabels["tab.new"] && (
+            <ContextMenuShortcut>{shortcutLabels["tab.new"]}</ContextMenuShortcut>
+          )}
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onSplitTerminalRight}>
+          New Terminal Split Right
+          {shortcutLabels["pane.splitRight"] && (
+            <ContextMenuShortcut>{shortcutLabels["pane.splitRight"]}</ContextMenuShortcut>
+          )}
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onSplitTerminalDown}>
+          New Terminal Split Down
+          {shortcutLabels["pane.splitDown"] && (
+            <ContextMenuShortcut>{shortcutLabels["pane.splitDown"]}</ContextMenuShortcut>
+          )}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={onNewBrowser}>
+          New Browser Tab
+          {shortcutLabels["tab.newPreview"] && (
+            <ContextMenuShortcut>{shortcutLabels["tab.newPreview"]}</ContextMenuShortcut>
+          )}
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onSplitBrowserRight}>
+          New Browser Split Right
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onSplitBrowserDown}>
+          New Browser Split Down
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
-export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, isWorkspaceActive, onActivate, onClose, onNewTerminal }: Props) {
+export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, isWorkspaceActive, onActivate, onClose, onNewTerminal, onCloseOtherPanels, onCloseAllPanels, onSplitTerminalRight, onSplitTerminalDown, onNewBrowser, onSplitBrowserRight, onSplitBrowserDown }: Props) {
   const tabBarStyle = usePreferencesStore((s) => s.tabBarStyle);
+  const userShortcuts = usePreferencesStore((s) => s.shortcuts);
+  const shortcutLabels: Record<string, string | null> = {
+    "tab.close":       getShortcutLabel("tab.close",       userShortcuts as Record<ShortcutId, KeyBinding[]>),
+    "tab.new":         getShortcutLabel("tab.new",         userShortcuts as Record<ShortcutId, KeyBinding[]>),
+    "pane.splitRight": getShortcutLabel("pane.splitRight", userShortcuts as Record<ShortcutId, KeyBinding[]>),
+    "pane.splitDown":  getShortcutLabel("pane.splitDown",  userShortcuts as Record<ShortcutId, KeyBinding[]>),
+    "tab.newPreview":  getShortcutLabel("tab.newPreview",  userShortcuts as Record<ShortcutId, KeyBinding[]>),
+  };
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -288,8 +386,18 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
           isWorkspaceActive={isWorkspaceActive}
           insertionBefore={insertionIndex === 0 && i === 0}
           insertionAfter={insertionIndex !== null && insertionIndex > 0 && i === insertionIndex - 1}
+          panelsCount={panels.length}
           onActivate={onActivate}
           onClose={onClose}
+          onCloseOtherPanels={onCloseOtherPanels}
+          onCloseAllPanels={onCloseAllPanels}
+          onNewTerminal={onNewTerminal}
+          onSplitTerminalRight={onSplitTerminalRight}
+          onSplitTerminalDown={onSplitTerminalDown}
+          onNewBrowser={onNewBrowser}
+          onSplitBrowserRight={onSplitBrowserRight}
+          onSplitBrowserDown={onSplitBrowserDown}
+          shortcutLabels={shortcutLabels}
         />
       ))}
       <button
