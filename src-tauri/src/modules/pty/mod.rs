@@ -82,8 +82,22 @@ pub async fn pty_open(
     Ok(id)
 }
 
+// Input is the latency-critical path: raw body + id header skips JSON
+// serialization of every keystroke on both sides of the IPC boundary.
 #[tauri::command]
-pub fn pty_write(state: tauri::State<PtyState>, id: u32, data: String) -> Result<(), String> {
+pub fn pty_write(
+    state: tauri::State<PtyState>,
+    request: tauri::ipc::Request,
+) -> Result<(), String> {
+    let id: u32 = request
+        .headers()
+        .get("x-pty-id")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| "pty_write: missing x-pty-id header".to_string())?;
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("pty_write: expected raw body".to_string());
+    };
     let session = state
         .sessions
         .read()
@@ -100,7 +114,7 @@ pub fn pty_write(state: tauri::State<PtyState>, id: u32, data: String) -> Result
         .writer
         .lock()
         .unwrap()
-        .write_all(data.as_bytes())
+        .write_all(bytes)
         .map_err(|e| {
             // EPIPE is expected if the child already exited.
             log::debug!("pty_write id={id} failed: {e}");
