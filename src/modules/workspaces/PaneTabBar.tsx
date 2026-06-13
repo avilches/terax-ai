@@ -258,6 +258,25 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
           ? "gap-0 border-t border-border/60"
           : "gap-0.5 border-b border-border/60 px-1",
       )}
+      onMouseEnter={() => {
+        mouseInsideRef.current = true;
+        if (mouseLeaveTimerRef.current) {
+          clearTimeout(mouseLeaveTimerRef.current);
+          mouseLeaveTimerRef.current = null;
+        }
+      }}
+      onMouseLeave={() => {
+        mouseInsideRef.current = false;
+        if (!userScrolledRef.current) return;
+        if (mouseLeaveTimerRef.current) clearTimeout(mouseLeaveTimerRef.current);
+        mouseLeaveTimerRef.current = setTimeout(() => {
+          mouseLeaveTimerRef.current = null;
+          if (paneFocusedRef.current && isWorkspaceActiveRef.current) {
+            userScrolledRef.current = false;
+            scrollActiveIntoView('smooth');
+          }
+        }, 5000);
+      }}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         pointerStartRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
