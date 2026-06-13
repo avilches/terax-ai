@@ -13,7 +13,6 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { getShortcutLabel } from "@/modules/shortcuts/shortcuts";
-import type { ShortcutId, KeyBinding } from "@/modules/shortcuts/shortcuts";
 
 type Props = {
   panels: Panel[];
@@ -219,11 +218,11 @@ export function PaneTabBar({ panels, activePanelId, paneFocused, workspaceId, is
   const tabBarStyle = usePreferencesStore((s) => s.tabBarStyle);
   const userShortcuts = usePreferencesStore((s) => s.shortcuts);
   const shortcutLabels: Record<string, string | null> = {
-    "tab.close":       getShortcutLabel("tab.close",       userShortcuts as Record<ShortcutId, KeyBinding[]>),
-    "tab.new":         getShortcutLabel("tab.new",         userShortcuts as Record<ShortcutId, KeyBinding[]>),
-    "pane.splitRight": getShortcutLabel("pane.splitRight", userShortcuts as Record<ShortcutId, KeyBinding[]>),
-    "pane.splitDown":  getShortcutLabel("pane.splitDown",  userShortcuts as Record<ShortcutId, KeyBinding[]>),
-    "tab.newPreview":  getShortcutLabel("tab.newPreview",  userShortcuts as Record<ShortcutId, KeyBinding[]>),
+    "tab.close":       getShortcutLabel("tab.close",       userShortcuts),
+    "tab.new":         getShortcutLabel("tab.new",         userShortcuts),
+    "pane.splitRight": getShortcutLabel("pane.splitRight", userShortcuts),
+    "pane.splitDown":  getShortcutLabel("pane.splitDown",  userShortcuts),
+    "tab.newPreview":  getShortcutLabel("tab.newPreview",  userShortcuts),
   };
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
 
