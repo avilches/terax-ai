@@ -102,6 +102,7 @@ export const RightPanel = forwardRef<RightPanelHandle, RightPanelProps>(
               onRevealInTerminal={props.onRevealInTerminal}
               onAttachToAgent={props.onAttachToAgent}
               onOpenMarkdownPreview={props.onOpenMarkdownPreview}
+              gitStatus={props.sourceControl.status}
             />
           </div>
           <div

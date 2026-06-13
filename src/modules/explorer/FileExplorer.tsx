@@ -32,7 +32,11 @@ import { copyToClipboard, revealInFinder } from "./lib/contextActions";
 import { fileIconUrl, folderIconUrl } from "./lib/iconResolver";
 import { COMPACT_CONTENT, COMPACT_ITEM } from "./lib/menuItemClass";
 import { useFileTree } from "./lib/useFileTree";
+import { useGitStatus } from "./lib/useGitStatus";
+import type { GitStatusCode } from "./lib/gitStatusUtils";
 import { useGlobalShortcuts } from "@/modules/shortcuts";
+import { usePreferencesStore } from "@/modules/settings/preferences";
+import type { GitStatusSnapshot } from "@/lib/native";
 
 export type FileExplorerHandle = {
   focus: () => void;
@@ -49,6 +53,7 @@ type Props = {
   onRevealInTerminal?: (path: string) => void;
   onAttachToAgent?: (path: string) => void;
   onOpenMarkdownPreview?: (path: string) => void;
+  gitStatus?: GitStatusSnapshot | null;
 };
 
 type Row =
@@ -60,8 +65,19 @@ type Row =
       isDir: boolean;
       isExpanded: boolean;
       depth: number;
+      gitignored: boolean;
+      gitStatusCode: GitStatusCode | null;
     }
-  | { kind: "rename"; key: string; path: string; name: string; isDir: boolean; depth: number }
+  | {
+      kind: "rename";
+      key: string;
+      path: string;
+      name: string;
+      isDir: boolean;
+      depth: number;
+      gitignored: boolean;
+      gitStatusCode: GitStatusCode | null;
+    }
   | { kind: "pending"; key: string; depth: number; pendingKind: "file" | "dir" }
   | { kind: "status"; key: string; depth: number; tone: "muted" | "error"; message: string };
 
@@ -76,11 +92,12 @@ function basename(path: string): string {
 function buildRows(
   rootPath: string,
   tree: ReturnType<typeof useFileTree>,
+  lookup: (path: string) => GitStatusCode | null,
 ): { rows: Row[]; entryIndexByPath: Map<string, number> } {
   const rows: Row[] = [];
   const entryIndexByPath = new Map<string, number>();
 
-  const walk = (parent: string, depth: number) => {
+  const walk = (parent: string, depth: number, parentIgnored: boolean) => {
     const node = tree.nodes[parent];
     if (!node || node.status !== "loaded") return;
     for (const entry of node.entries) {
@@ -88,6 +105,8 @@ function buildRows(
       const isDir = entry.kind === "dir";
       const expanded = isDir && tree.expanded.has(path);
       const isRenaming = tree.renaming === path;
+      const gitignored = parentIgnored || entry.gitignored;
+      const gitStatusCode = gitignored ? null : lookup(path);
       if (isRenaming) {
         rows.push({
           kind: "rename",
@@ -96,6 +115,8 @@ function buildRows(
           name: entry.name,
           isDir,
           depth,
+          gitignored,
+          gitStatusCode,
         });
       } else {
         entryIndexByPath.set(path, rows.length);
@@ -107,6 +128,8 @@ function buildRows(
           isDir,
           isExpanded: expanded,
           depth,
+          gitignored,
+          gitStatusCode,
         });
       }
       if (isDir && expanded) {
@@ -136,13 +159,13 @@ function buildRows(
             message: child.message,
           });
         } else if (child?.status === "loaded") {
-          walk(path, depth + 1);
+          walk(path, depth + 1, gitignored);
         }
       }
     }
   };
 
-  walk(rootPath, 0);
+  walk(rootPath, 0, false);
   return { rows, entryIndexByPath };
 }
 
@@ -157,10 +180,17 @@ export const FileExplorer = memo(
       onRevealInTerminal,
       onAttachToAgent,
       onOpenMarkdownPreview,
+      gitStatus,
     },
     ref,
   ) {
     const tree = useFileTree(rootPath, { onPathRenamed, onPathDeleted });
+    const gitDecorations = usePreferencesStore((s) => s.explorerGitDecorations);
+    const { lookup: lookupGitStatus } = useGitStatus(
+      rootPath,
+      gitDecorations ? gitStatus : null,
+      gitDecorations,
+    );
     const [selectedPath, setSelectedPath] = useState<string | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -170,11 +200,18 @@ export const FileExplorer = memo(
 
     const { rows, entryIndexByPath } = useMemo(() => {
       if (!rootPath) return { rows: [] as Row[], entryIndexByPath: new Map<string, number>() };
-      return buildRows(rootPath, tree);
+      return buildRows(rootPath, tree, lookupGitStatus);
       // `tree` is intentionally omitted: its identity changes every render, but
       // the listed fields are the only inputs buildRows actually reads.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [rootPath, tree.nodes, tree.expanded, tree.renaming, tree.pendingCreate]);
+    }, [
+      rootPath,
+      tree.nodes,
+      tree.expanded,
+      tree.renaming,
+      tree.pendingCreate,
+      lookupGitStatus,
+    ]);
 
     const rowActions = useMemo<RowActions>(
       () => ({
@@ -382,6 +419,8 @@ export const FileExplorer = memo(
               renameInProgress={renameInProgress}
               isSelected={selectedPath === row.path}
               isRenaming={row.kind === "rename"}
+              gitStatusCode={row.gitStatusCode}
+              gitignored={gitDecorations && row.gitignored}
               onOpenFile={onOpenFile}
               onSelectPath={setSelectedPath}
               onRevealInTerminal={onRevealInTerminal}

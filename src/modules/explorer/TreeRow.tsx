@@ -17,6 +17,8 @@ import {
   revealInFinder,
 } from "./lib/contextActions";
 import { fileIconUrl, folderIconUrl } from "./lib/iconResolver";
+import { explorerGitTextClass } from "./lib/gitStatusColor";
+import type { GitStatusCode } from "./lib/gitStatusUtils";
 import { COMPACT_CONTENT, COMPACT_ITEM } from "./lib/menuItemClass";
 
 export type RowActions = {
@@ -39,6 +41,8 @@ export type EntryRowProps = {
   renameInProgress: boolean;
   isSelected: boolean;
   isRenaming: boolean;
+  gitStatusCode?: GitStatusCode | null;
+  gitignored?: boolean;
   onOpenFile: (path: string, pin?: boolean) => void;
   onSelectPath: (path: string) => void;
   onRevealInTerminal?: (path: string) => void;
@@ -62,6 +66,8 @@ function EntryRowImpl(props: EntryRowProps) {
     renameInProgress,
     isSelected,
     isRenaming,
+    gitStatusCode,
+    gitignored = false,
     onOpenFile,
     onSelectPath,
     onRevealInTerminal,
@@ -114,8 +120,12 @@ function EntryRowImpl(props: EntryRowProps) {
             onClick={handleClick}
             onDoubleClick={() => !isDir && actions.beginRename(path)}
             className={cn(
-              "group flex h-6 w-full min-w-0 cursor-pointer items-center gap-2 rounded-sm px-1.5 text-left text-[13px] text-foreground/85 transition-colors hover:bg-accent/70",
-              isSelected && "bg-accent text-foreground",
+              "group flex h-6 w-full min-w-0 cursor-pointer items-center gap-2 rounded-sm px-1.5 text-left text-[13px] transition-colors hover:bg-accent/70",
+              isSelected
+                ? "bg-accent text-foreground"
+                : gitignored
+                  ? "text-muted-foreground/70"
+                  : "text-foreground/85",
               isDragging && "opacity-50",
             )}
             style={{ paddingLeft }}
@@ -140,7 +150,17 @@ function EntryRowImpl(props: EntryRowProps) {
             ) : (
               <span className="size-4 shrink-0" />
             )}
-            <span className="min-w-0 flex-1 truncate">{name}</span>
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate",
+                !isSelected &&
+                  !gitignored &&
+                  gitStatusCode &&
+                  explorerGitTextClass(gitStatusCode),
+              )}
+            >
+              {name}
+            </span>
           </button>
         )}
       </ContextMenuTrigger>
