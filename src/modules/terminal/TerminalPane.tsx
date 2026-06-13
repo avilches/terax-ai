@@ -2,13 +2,26 @@ import { useTheme } from "@/modules/theme";
 import type { SearchAddon } from "@xterm/addon-search";
 import {
   forwardRef,
+  lazy,
+  Suspense,
   useEffect,
   useImperativeHandle,
   useRef,
   useState,
 } from "react";
 import { BlockOverlay } from "./block/BlockOverlay";
-import { focusLeafInput, useTerminalSession } from "./lib/useTerminalSession";
+import {
+  focusLeafInput,
+  interruptLeaf,
+  leafCwd,
+  submitToLeaf,
+  useTerminalSession,
+} from "./lib/useTerminalSession";
+
+// Lazy: ShellInput pulls the CodeMirror stack, which must stay out of the
+// eager startup bundle (see eager-budget.test.ts). It loads only when a block
+// terminal is actually opened.
+const ShellInput = lazy(() => import("./block/ShellInput"));
 
 export type TerminalPaneHandle = {
   write: (data: string) => void;
@@ -145,6 +158,19 @@ export const TerminalPane = forwardRef<TerminalPaneHandle, Props>(
               onHoverKeepAlive={cancelHideHover}
               onHoverEnd={() => setHoveredId(null)}
             />
+          </div>
+          <div className="shrink-0 border-t border-border/40 px-3 py-2">
+            <Suspense fallback={null}>
+              <ShellInput
+                leafId={panelId}
+                mode={session.blockMode}
+                focused={focused}
+                themeKey={`${themeId}:${resolvedMode}`}
+                onSubmit={(text) => submitToLeaf(panelId, text)}
+                onInterrupt={() => interruptLeaf(panelId)}
+                getCwd={() => leafCwd(panelId)}
+              />
+            </Suspense>
           </div>
         </div>
       );
